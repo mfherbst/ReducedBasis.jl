@@ -1,38 +1,34 @@
 # Parametric type for parameter vector?
-struct Grid{D} <: AbstractArray{NTuple{D,Float64},D}
-    points::Array{NTuple{D,Float64},D}
-    bounds::Vector{Vector{Float64}}
+struct RegularGrid{D} <: AbstractArray{<:SVector{D,Number},D}
+    points::Array{SVector{D,Number},D}
     ranges::Vector{StepRangeLen}
 end
-function Grid(bounds::Vector{<:Vector{<:Number}}, lengths::Vector{<:Integer}; shifted=false)
-    bounds = Vector{Float64}.(bounds)
-    dim = length(bounds)
+function RegularGrid(ranges::Vector{StepRangeLen})
+    Dim = length(ranges)
+    @assert all(eltype.(range)) # Enforce same type in all dimensions?
+    T = eltype(ranges[1])
 
-    if shifted
-        offsets = [diff(bounds[d]) / 2(lengths[d] - 1) for d = 1:dim]
-        ranges = [range(bounds[d]..., lengths[d] - 1) .+ offsets[d] for d = 1:dim]
-    else
-        ranges = [range(bounds[d]..., lengths[d]) for d = 1:dim]
-    end
-
-    points = Array{NTuple{dim,Float64},dim}(undef, lengths...)
+    points = Array{SVector{Dim,T},Dim}(undef, lengths...)
     for idx in CartesianIndices(points)
-        points[idx] = Tuple(ranges[d][idx[d]] for d = 1:dim)
+        points[idx] = SVector([ranges[d][idx[d]] for d = 1:Dim]...)
     end
-    Grid{dim}(points, bounds, ranges)
+    Grid{Dim}(points, ranges)
 end
 
 # AbstractArray interface
-Base.length(grid::Grid) = prod(grid.len)
-Base.size(grid::Grid) = size(grid.points)
-Base.size(grid::Grid, i::Int) = size(grid.points, i)
-Base.getindex(grid::Grid{D}, i::Int) where {D} = getindex(grid.points, i)
-Base.getindex(grid::Grid{D}, I::Vararg{Int,D}) where {D} = getindex(grid.points, I...)
-Base.setindex!(grid::Grid{D}, μ, i::Int) where {D} = Base.setindex!(grid.points, μ, i)
-Base.setindex!(grid::Grid{D}, μ, I::Vararg{Int,D}) where {D} = Base.setindex!(grid.points, μ, I...)
+Base.length(grid::RegularGrid) = length(grid.points)
+Base.size(grid::RegularGrid) = size(grid.points)
+Base.size(grid::RegularGrid, i::Int) = size(grid.points, i)
+Base.getindex(grid::RegularGrid{D}, i::Int) where {D} = getindex(grid.points, i)
+Base.getindex(grid::RegularGrid{D}, I::Vararg{Int,D}) where {D} = getindex(grid.points, I...)
+
+# Return grid boundaries (convex hull)
+bounds(grid::RegularGrid) = [[first(r), last(r)] for r in grid.ranges]
+
+# Shift grid points by D-dimensional offset vector
+shift(grid::RegularGrid) = missing
 
 # Check if given parameter point is in convex hull of grid
-function in_bounds(μ, grid::Grid)
-    contained = [p ∈ grid.bounds[d] for (d, p) in enumerate(μ)]
-    return all(contained) ? true : false
+function in_bounds(μ, grid::RegularGrid)
+    all([first(r) ≤ p ≤ last(r) for (p, r) in zip(μ, grid.ranges)])
 end
