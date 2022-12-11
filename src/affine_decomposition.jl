@@ -2,19 +2,19 @@
 struct AffineDecomposition{D,M,F<:Function}
     terms::Array{M,D}
     # Coefficient function mapping μᵢ → (αᵣ(μᵢ)) to array of size(terms)
-    coeffientmap::F
+    coefficient_map::F
 end
 
-(ad::AffineDecomposition)(μ) = sum(ad.coeffientmap(μ) .* ad.terms)
+(ad::AffineDecomposition)(μ) = sum(ad.coefficient_map(μ) .* ad.terms)
 n_terms(ad::AffineDecomposition) = length(ad.terms)
 
 # Returns compressed/reduced observable
-function compress(a::AffineDecomposition, basis::ReducedBasis)
-    AffineDecomposition([compress(basis, term) for term in a.terms], a.coeffientmap)
+function compress(ad::AffineDecomposition, basis::RBasis)
+    AffineDecomposition([compress(basis, term) for term in ad.terms], ad.coefficient_map)
 end
 
 # General compression method
 # Different methods for specific m-types (e.g. typeof(m) = Vectors{MPS} etc.)
-function compress(m::AbstractMatrix, basis::ReducedBasis)
+function compress(m::AbstractMatrix, basis::RBasis)
     basis.vectors' * (basis.snapshots' * (m * basis.snapshots)) * basis.vectors
 end
