@@ -17,11 +17,11 @@ include("affine_decomposition.jl")
 export AffineDecomposition, n_terms, compress
 
 include("full_diag.jl")
-export FullDiagonalization, truth_solve, online_solve
+export FullDiagonalization, truth_solve, online_solve, QRCompress
 # include("lobpcg.jl")
 
 include("callback.jl")
-export default_callback
+export print_callback, DFBuilder
 
 include("greedy.jl")
 export Greedy, ErrorEstimate, Residual, estimate_error, assemble

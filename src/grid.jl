@@ -26,7 +26,7 @@ Base.getindex(grid::RegularGrid{D}, I::Vararg{Int,D}) where {D} = getindex(grid.
 bounds(grid::RegularGrid) = [[first(r), last(r)] for r in grid.ranges]
 
 # Shift grid points by D-dimensional offset vector
-shift(grid::RegularGrid) = missing
+shift(grid::RegularGrid, μ_shift) = error()
 
 # Check if given parameter point is in convex hull of grid
 function in_bounds(μ, grid::RegularGrid)

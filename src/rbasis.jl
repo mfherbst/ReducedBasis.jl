@@ -16,14 +16,14 @@ dim(basis::RBasis) = size(basis.snapshots, 2)
 n_truthsolve(basis::RBasis) = length(unique(basis.parameters))
 
 # Extend basis by vectors using QR compression/orthonormalization
-function extend!(basis::RBasis, Ψ, μ, solver)
+function extend!(basis::RBasis, Ψ, μ, qrcomp::QRCompress)
     B = basis.snapshots * basis.vectors
-    if solver.full_orthogonalize # QR factorization of the full basis
+    if qrcomp.full_orthogonalize # QR factorization of the full basis
         fact = qr(hcat(B, Ψ), Val(true))
 
         # Keep orthogonalized vectors of significant norm
         max_per_row = dropdims(maximum(abs, fact.R; dims=2); dims=2)
-        keep = findlast(max_per_row .> solver.tol_qr)
+        keep = findlast(max_per_row .> qrcomp.tol_qr)
         (keep ≤ size(basis, 2)) && (return basis, keep)
 
         v_norm = abs(fact.R[keep, keep])
@@ -33,7 +33,7 @@ function extend!(basis::RBasis, Ψ, μ, solver)
 
         # Keep orthogonalized vectors of significant norm
         max_per_row = dropdims(maximum(abs, fact.R; dims=2); dims=2)
-        keep = findlast(max_per_row .> solver.tol_qr)
+        keep = findlast(max_per_row .> qrcomp.tol_qr)
         isnothing(keep) && (return basis, keep)
 
         v = Matrix(fact.Q)[:, 1:keep]

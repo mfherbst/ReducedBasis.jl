@@ -27,7 +27,7 @@ function local_to_global(L::Int, op::M, i::Int) where M <: AbstractMatrix
     end
 end
 
-function xxz_chain(L, ::Type{Matrix})
+function xxz_chain(L)
     H1 = 0.25 * sum([
         local_to_global(L, σx, i) * local_to_global(L, σx, i + 1) +
         local_to_global(L, σy, i) * local_to_global(L, σy, i + 1) for i = 1:L-1
@@ -42,21 +42,20 @@ end
 
 ## Offline parameters
 L = 8
-H_XXZ = xxz_chain(L, Matrix)
-
-greedy = Greedy(; estimator=Residual(), tol_residual=1e-16, n_truth_max=64)
-
-solver = FullDiagonalization(;
-    n_states_max=L+1, tol_degeneracy=1e-10, full_orthogonalize=false, tol_qr=1e-10
-) # m = L + 1 degeneracy at (Δ, h/J) = (-1, 0)
+H_XXZ = xxz_chain(L)
+greedy = Greedy(; estimator=Residual(), tol=1e-16, n_truth_max=64)
+solver = FullDiagonalization(; n_states_max=L+1, tol_degeneracy=1e-4) # m = L + 1 degeneracy at (Δ, h/J) = (-1, 0)
+compressalg = QRCompress(; full_orthogonalize=false, tol_qr=1e-10)
 
 Δ = range(-1.0, 2.5, 40)
 h = range(0.0, 3.5, 40)
 grid_train = RegularGrid(Δ, h);
 
 ## Assembly
+diagnostics = DFBuilder()
 basis, h, info = assemble(
-    H_XXZ, grid_train, greedy, solver; solver_online=solver
+    H_XXZ, grid_train, greedy, solver, compressalg;
+    solver_online=solver, callback=diagnostics ∘ print_callback
 );
 
 ##
