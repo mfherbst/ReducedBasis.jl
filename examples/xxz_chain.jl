@@ -2,14 +2,19 @@ using MKL
 using Revise
 using LinearAlgebra
 using SparseArrays
+using ProgressMeter
 using Plots
 using ReducedBasis
 
 ## Setting up the physical model
 # Define (dense) Pauli matrices
-σx = [0.0 1.0; 1.0 0.0]
-σy = [0.0 -im; im 0.0]
-σz = [1.0 0.0; 0.0 1.0]
+# TODO: convert sparse to dense matrices, if needed (e.g. for eigen)
+# σx = [0.0 1.0; 1.0 0.0]
+# σy = [0.0 -im; im 0.0]
+# σz = [1.0 0.0; 0.0 -1.0]
+σx = sparse([0.0 1.0; 1.0 0.0])
+σy = sparse([0.0 -im; im 0.0])
+σz = sparse([1.0 0.0; 0.0 1.0])
 
 # Convert local-site to many-body operator
 function local_to_global(L::Int, op::M, i::Int) where M <: AbstractMatrix
@@ -43,43 +48,36 @@ end
 ## Offline parameters
 L = 8
 H_XXZ = xxz_chain(L)
-greedy = Greedy(; estimator=Residual(), tol=1e-16, n_truth_max=64)
-solver = FullDiagonalization(; n_states_max=L+1, tol_degeneracy=1e-4) # m = L + 1 degeneracy at (Δ, h/J) = (-1, 0)
+greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64)
+fulldiag = FullDiagonalization(; n_target=L+1, tol_degeneracy=1e-4) # m = L + 1 degeneracy at (Δ, h/J) = (-1, 0)
+lobpcg = LOBPCG(; tol=1e-9, n_target=L+1, tol_degeneracy=1e-4, shift=0.0)
 compressalg = QRCompress(; full_orthogonalize=false, tol_qr=1e-10)
+# compressalg = nothing
 
 Δ = range(-1.0, 2.5, 40)
-h = range(0.0, 3.5, 40)
-grid_train = RegularGrid(Δ, h);
+hJ = range(0.0, 3.5, 40)
+grid_train = RegularGrid(Δ, hJ);
 
-## Assembly
+## Offline phase
 diagnostics = DFBuilder()
 basis, h, info = assemble(
-    H_XXZ, grid_train, greedy, solver, compressalg;
-    solver_online=solver, callback=diagnostics ∘ print_callback
-);
+    H_XXZ, grid_train, greedy, lobpcg, compressalg;
+    callback=diagnostics ∘ print_callback, init_from_rb=false,
+)
+diagnostics = diagnostics.df  # TODO: improve DataFrame management
 
-##
-h = info.h_cache.h
-hh = info.h_cache.h²
-μ = [1.0, 0.0]
-λ, φ = online_solve(h, basis.metric, μ, solver)
-err = estimate_error(greedy.estimator, μ, hh, basis.metric, λ, φ)
-
-@show err;
-
-## Construct and compress observables
-M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-m = compress(M, basis)
+M = AffineDecomposition([H_XXZ.terms[3]], μ -> [2 / L])
+m = compress(M, basis);
 
 ## Online phase
 Δ_online = range(first(Δ), last(Δ), 200)
-h_online = range(first(h), last(h), 200)
-grid_online = RegularGrid(Δ_online, h_online)
+hJ_online = range(first(hJ), last(hJ), 200)
+grid_online = RegularGrid(Δ_online, hJ_online)
 
 magnetization = Matrix{Float64}(undef, size(grid_online))
 m_reduced = m([1])  # Save observable, since coefficients do not depend on μ 
-for (idx, μ) in pairs(grid_online)
-    λ_rb, φ_rb = online_solve(h, basis.metric, μ, solver)
+@showprogress for (idx, μ) in pairs(grid_online)
+    λ_rb, φ_rb = solve(h, basis.metric, μ, solver)
     magnetization[idx] = sum(eachcol(φ_rb)) do φ
         dot(φ, m_reduced, φ) / size(φ_rb, 2)  # Divide by multiplicity
     end
@@ -90,16 +88,20 @@ hm = heatmap(
     grid_online.ranges[1],
     grid_online.ranges[2],
     magnetization';  # transpose to have rows as x-axis
-    title="\$\\langle M \\rangle\$",
-    aspect_ratio=:equal,
+    xlabel=raw"$\Delta$",
+    ylabel=raw"$h/J$",
+    title="magnetization "*raw"$\langle M \rangle = \frac{2}{L}\sum_{i=1}^L S^z_i $",
+    colorbar=true,
     clims=(0.0, 1.0),
+    leg=false,
 )
-# plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false)
+plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:green3)
 scatter!(
     hm,
     [μ[1] for μ in diagnostics.snapshot],
     [μ[2] for μ in diagnostics.snapshot];
     markershape=:xcross,
-    color=:green,
-    msw=2,
+    color=:springgreen,
+    ms=3.0,
+    msw=2.0,
 )

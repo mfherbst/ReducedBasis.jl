@@ -1,21 +1,28 @@
-# T -> floating-point type
-# P -> type of the parameter vector (e.g. SVector{3, T})
+# T: floating-point type
+# P: type of the parameter vector (e.g. SVector{3, T})
 struct RBasis{T<:Number,P<:AbstractVector,M<:AbstractMatrix{T},N<:Union{AbstractMatrix{T}, UniformScaling}}
     # Column-wise truth solves yᵢ at certain parameter values μᵢ
-    snapshots::M  # = y
+    snapshots::M
     # Parameter values μᵢ associated with truth solve yᵢ
     # Contains μᵢ m times in case of m-fold degeneracy
     parameters::Vector{P}
     # Coefficients making up the reduced basis vectors as truthsolves * vectors
-    vectors::N  # = V
+    vectors::N
     # Overlap between basis vectors, equivalent to (V'*Y'*Y*V)
-    metric::Matrix{T}  # = V' * Y' * Y * V
+    metric::Matrix{T}
 end
 
 dim(basis::RBasis) = size(basis.snapshots, 2)
 n_truthsolve(basis::RBasis) = length(unique(basis.parameters))
+Base.size(basis::RBasis) = size(basis.snapshots)
+Base.size(basis::RBasis, i::Int) = size(basis.snapshots, i)
 
 # Extend basis by vectors using QR compression/orthonormalization
+function extend!(basis::RBasis, Ψ, μ, ::Nothing)
+    B_new = hcat(basis.snapshots, Ψ)
+    push!(basis.parameters, μ)
+    RBasis(B_new, basis.parameters, I, B_new' * B_new), nothing
+end
 function extend!(basis::RBasis, Ψ, μ, qrcomp::QRCompress)
     B = basis.snapshots * basis.vectors
     if qrcomp.full_orthogonalize # QR factorization of the full basis

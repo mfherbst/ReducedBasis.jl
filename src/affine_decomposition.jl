@@ -7,10 +7,14 @@ end
 
 (ad::AffineDecomposition)(μ) = sum(ad.coefficient_map(μ) .* ad.terms)
 n_terms(ad::AffineDecomposition) = length(ad.terms)
+function Base.size(ad::AffineDecomposition, args...)
+    @assert all(s -> s == size(ad.terms[1]), size.(ad.terms)) "Affine terms have different dimensions."
+    size(ad.terms[1], args...)
+end
 
 # Returns compressed/reduced observable
 function compress(ad::AffineDecomposition, basis::RBasis)
-    AffineDecomposition([compress(basis, term) for term in ad.terms], ad.coefficient_map)
+    AffineDecomposition([compress(term, basis) for term in ad.terms], ad.coefficient_map)
 end
 
 # General compression method

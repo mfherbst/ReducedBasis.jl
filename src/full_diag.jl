@@ -1,36 +1,27 @@
 struct FullDiagonalization
-    n_states_max::Int
+    n_target::Int
     tol_degeneracy::Float64
-    full_orthogonalize::Bool
-    tol_qr::Float64
 end
-function FullDiagonalization(; n_states_max=1, tol_degeneracy=0.0,
-                             full_orthogonalize=false, tol_qr=1e-10)
-    FullDiagonalization(n_states_max, tol_degeneracy, full_orthogonalize, tol_qr)
+function FullDiagonalization(; n_target=1, tol_degeneracy=0.0)
+    FullDiagonalization(n_target, tol_degeneracy)
 end
 
 function solve(H::AffineDecomposition, μ, Ψ₀, fd::FullDiagonalization)
-    Λ, Ψ = eigen(Hermitian(H(μ)), 1:fd.n_states_max)
-    n_target = fd.n_states_max
+    Λ, Ψ = eigen(Hermitian(H(μ)), 1:fd.n_target)
+    # TODO: n_target correct terminology here?
+    n_target = fd.n_target
     if fd.tol_degeneracy > 0.0
-        n_target = findlast(λ -> abs(λ - Λ[fd.n_states_max]) < fd.tol_degeneracy, Λ)
+        n_target = findlast(abs.(Λ .- Λ[1]) .< fd.tol_degeneracy)
     end
     (values=Λ[1:n_target], vectors=Ψ[:, 1:n_target])
 end
 
 function solve(h::AffineDecomposition, b::Matrix, μ, fd::FullDiagonalization)
+    # TODO: force Hermitian?
     Λ, φ = eigen(Hermitian(h(μ)), Hermitian(b))
-    n_target = fd.n_states_max
+    n_target = fd.n_target
     if fd.tol_degeneracy > 0.0
-        n_target = findlast(λ -> abs(λ - Λ[fd.n_states_max]) < fd.tol_degeneracy, Λ)
+        n_target = findlast(abs.(Λ .- Λ[1]) .< fd.tol_degeneracy)
     end
     (values=Λ[1:n_target], vectors=φ[:, 1:n_target])
-end
-
-struct QRCompress
-    full_orthogonalize::Bool
-    tol_qr::Float64
-end
-function QRCompress(; full_orthogonalize=false, tol_qr=1e-10)
-    QRCompress( full_orthogonalize, tol_qr)
 end

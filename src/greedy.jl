@@ -17,12 +17,9 @@ end
 function Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64)
     Greedy(estimator, tol, n_truth_max)
 end
+
 # Convenience struct for efficient H, H² compression
-# D: dimension of Hamiltonian AD
-# M: matrix-type of Hamiltonian AD
-# V: vector-type of Hamiltonian application HΨ
-# Add parameters or does not matter here?
-# Non-mutable struct also possible?
+# TODO: make parametric type
 struct HamiltonianCache
     H::AffineDecomposition
     HΨ::Array
@@ -31,7 +28,8 @@ struct HamiltonianCache
 end
 function HamiltonianCache(H::AffineDecomposition, basis::RBasis)
     HΨ = [term * basis.snapshots * basis.vectors for term in H.terms]
-    h = AffineDecomposition([basis.vectors' * basis.snapshots' * v for v in HΨ], H.coefficient_map)
+    # h = AffineDecomposition([basis.vectors' * basis.snapshots' * v for v in HΨ], H.coefficient_map)
+    h = compress(H, basis)
     h² = AffineDecomposition(
         reshape([v1' * v2 for v1 in HΨ for v2 in HΨ], (n_terms(H), n_terms(H))),
         μ -> (H.coefficient_map(μ) * H.coefficient_map(μ)')
@@ -47,7 +45,7 @@ function extend!(hc::HamiltonianCache, basis::RBasis)
 end
 
 # Reconstruct ground state from RB eigenvector
-# Where to place this? -> not possible in rbasis.jl due to AffineDecomposition
+# TODO: Where to place this? -> not possible in rbasis.jl due to AffineDecomposition
 function reconstruct(basis::RBasis, h::AffineDecomposition, μ, solver_online)
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
     basis.snapshots * basis.vectors * φ_rb
@@ -59,17 +57,20 @@ function assemble(
     greedy::Greedy,
     solver_truth,
     compressalg;
-    solver_online=FullDiagonalization(),
+    solver_online=FullDiagonalization(
+        tol_degeneracy=solver_truth.tol_degeneracy,
+        n_target=solver_truth.n_target
+    ),
     init_from_rb=true,
     callback=print_callback
 )
-    # First iteration separate? (to avoid annoying if-statements in for-loop)
+    # TODO: First iteration separate? (to avoid annoying if-statements in for-loop)
     t_init = time_ns()
     μ₁ = grid[1]
     truth = solve(H, μ₁, nothing, solver_truth)
     basis = RBasis(truth.vectors, [μ₁,], I, truth.vectors' * truth.vectors)
     h_cache = HamiltonianCache(H, basis)
-    info = (; iteration=1, err_max=NaN, μ=μ₁, basis, h_cache, t=t_init, state=:start)
+    info = (; iteration=1, err_max=NaN, μ=μ₁, basis, h_cache, t=t_init, state=:run)
     callback(info)
 
     for n = 2:greedy.n_truth_max
@@ -87,10 +88,11 @@ function assemble(
 
         # Construct initial guess at μ_next and run truth solve
         Ψ₀ = init_from_rb ? reconstruct(basis, h_cache.h, μ_next, solver_online) : nothing
+        @show Ψ₀
         truth = solve(H, μ_next, Ψ₀, solver_truth)
 
         # Append truth vector according to solver method
-        # write extend or extend! -> possibly mutates snapshots (e.g. with MPS)
+        # TODO: write extend or extend! -> possibly mutates snapshots (e.g. with MPS)
         basis_new, extend_info = extend!(basis, truth.vectors, μ_next, compressalg)
 
         # Exit: ill-conditioned BᵀB
@@ -107,7 +109,7 @@ function assemble(
 
         # Update basis with new snapshot/vector/metric and compute reduced terms
         basis = basis_new
-        h_cache = extend!(h_cache, basis)  # Also call extend like extend(basis)?
+        h_cache = extend!(h_cache, basis)
 
         # Update iteration state info
         info = (; iteration=n, err_grid, λ_grid, err_max, μ=μ_next, extend_info, basis, h_cache, t=t_iterstart, state=:run)
@@ -115,7 +117,7 @@ function assemble(
 
         # Exit iteration if residuals drops below tolerance
         if err_max < greedy.tol
-            # Use println(...) or @info() here?
+            # TODO: Use println(...) or @info() here?
             println("Reached residual target.")
             break
         end

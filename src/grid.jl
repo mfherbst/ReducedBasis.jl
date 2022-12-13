@@ -1,11 +1,10 @@
-# Parametric type for parameter vector?
 struct RegularGrid{D} <: AbstractArray{SVector{D,Number},D}
     points::Array{SVector{D,Number},D}
     ranges::Vector{StepRangeLen}
 end
 function RegularGrid(ranges::Vararg{<:StepRangeLen})
     Dim = length(ranges)
-    @assert all(t -> t == eltype(ranges[1]), eltype.(ranges)) # Enforce same type in all dimensions?
+    @assert all(t -> t == eltype(ranges[1]), eltype.(ranges)) # TODO: Enforce same type in all dimensions?
     T = eltype(ranges[1])
 
     points = Array{SVector{Dim,T},Dim}(undef, length.(ranges)...)
@@ -15,7 +14,7 @@ function RegularGrid(ranges::Vararg{<:StepRangeLen})
     RegularGrid{Dim}(points, [ranges...])
 end
 
-# AbstrctArray interface
+# AbstractArray interface
 Base.length(grid::RegularGrid) = length(grid.points)
 Base.size(grid::RegularGrid) = size(grid.points)
 Base.size(grid::RegularGrid, i::Int) = size(grid.points, i)
