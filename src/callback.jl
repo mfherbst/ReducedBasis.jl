@@ -4,7 +4,7 @@ function print_callback(info::NamedTuple)
         info = merge(info, (; metric_norm=norm(info.basis.metric - I)))
         if isone(info.iteration)
             @printf("%-3s    %-8s    %-8s    %-6s    %-8s\n",
-                    "n", "max. err", "‖BᵀB - I‖", "time", "μ")
+                    "n", "max. err", "‖BᵀB-I‖", "time", "μ")
             println("-"^60)
         end
         @printf("%-3s    %-8.3g    %-8.3g    %-6s    %-8s\n",
@@ -14,6 +14,7 @@ function print_callback(info::NamedTuple)
     else
         @warn "Invalid info state:" info.state
     end
+    flush(stdout)  # Flush e.g. to enable live printing on cluster
     return info
 end
 
@@ -26,7 +27,7 @@ function DFBuilder()
         "max_error" => Float64[],
         "metric_norm" => Float64[],
         "time" => String[],
-        "snapshot" => SVector[]
+        "parameter" => SVector[]
     ))
 end
 

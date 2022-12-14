@@ -7,14 +7,10 @@ using Plots
 using ReducedBasis
 
 ## Setting up the physical model
-# Define (dense) Pauli matrices
-# TODO: convert sparse to dense matrices, if needed (e.g. for eigen)
-# σx = [0.0 1.0; 1.0 0.0]
-# σy = [0.0 -im; im 0.0]
-# σz = [1.0 0.0; 0.0 -1.0]
+# Define sparse Pauli matrices
 σx = sparse([0.0 1.0; 1.0 0.0])
 σy = sparse([0.0 -im; im 0.0])
-σz = sparse([1.0 0.0; 0.0 1.0])
+σz = sparse([1.0 0.0; 0.0 -1.0])
 
 # Convert local-site to many-body operator
 function local_to_global(L::Int, op::M, i::Int) where M <: AbstractMatrix
@@ -46,11 +42,12 @@ function xxz_chain(L)
 end
 
 ## Offline parameters
-L = 8
+L = 10
 H_XXZ = xxz_chain(L)
 greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64)
 fulldiag = FullDiagonalization(; n_target=L+1, tol_degeneracy=1e-4) # m = L + 1 degeneracy at (Δ, h/J) = (-1, 0)
-lobpcg = LOBPCG(; tol=1e-9, n_target=L+1, tol_degeneracy=1e-4, shift=0.0)
+# TODO: fix iteration for n_target=1 (terminates after n=2)
+lobpcg = LOBPCG(; tol=1e-9, n_target=1, tol_degeneracy=0.0)
 compressalg = QRCompress(; full_orthogonalize=false, tol_qr=1e-10)
 # compressalg = nothing
 
@@ -58,7 +55,7 @@ compressalg = QRCompress(; full_orthogonalize=false, tol_qr=1e-10)
 hJ = range(0.0, 3.5, 40)
 grid_train = RegularGrid(Δ, hJ);
 
-## Offline phase
+## Offline phase (RB assembly)
 diagnostics = DFBuilder()
 basis, h, info = assemble(
     H_XXZ, grid_train, greedy, lobpcg, compressalg;
@@ -66,18 +63,19 @@ basis, h, info = assemble(
 )
 diagnostics = diagnostics.df  # TODO: improve DataFrame management
 
+## Offline phase (observable compression)
 M = AffineDecomposition([H_XXZ.terms[3]], μ -> [2 / L])
 m = compress(M, basis);
 
 ## Online phase
-Δ_online = range(first(Δ), last(Δ), 200)
-hJ_online = range(first(hJ), last(hJ), 200)
+Δ_online = range(first(Δ), last(Δ), 500)
+hJ_online = range(first(hJ), last(hJ), 500)
 grid_online = RegularGrid(Δ_online, hJ_online)
 
 magnetization = Matrix{Float64}(undef, size(grid_online))
 m_reduced = m([1])  # Save observable, since coefficients do not depend on μ 
 @showprogress for (idx, μ) in pairs(grid_online)
-    λ_rb, φ_rb = solve(h, basis.metric, μ, solver)
+    λ_rb, φ_rb = solve(h, basis.metric, μ, fulldiag)
     magnetization[idx] = sum(eachcol(φ_rb)) do φ
         dot(φ, m_reduced, φ) / size(φ_rb, 2)  # Divide by multiplicity
     end
@@ -98,8 +96,8 @@ hm = heatmap(
 plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:green3)
 scatter!(
     hm,
-    [μ[1] for μ in diagnostics.snapshot],
-    [μ[2] for μ in diagnostics.snapshot];
+    [μ[1] for μ in diagnostics.parameter],
+    [μ[2] for μ in diagnostics.parameter];
     markershape=:xcross,
     color=:springgreen,
     ms=3.0,

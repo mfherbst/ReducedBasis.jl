@@ -14,20 +14,20 @@ include("compressalg.jl")
 export QRCompress
 
 include("rbasis.jl")
-export RBasis, dim, n_truthsolve, extend, reconstruct
+export RBasis, dim, n_truthsolve, multiplicity, extend
 
 include("affine_decomposition.jl")
 export AffineDecomposition, n_terms, compress
 
 include("full_diag.jl")
 include("lobpcg.jl")
-export FullDiagonalization, solve, LOBPCG
+export FullDiagonalization, LOBPCG, solve
 
 
 include("callback.jl")
-export print_callback, DFBuilder
+export DFBuilder, print_callback
 
 include("greedy.jl")
-export Greedy, ErrorEstimate, Residual, estimate_error, assemble
+export Greedy, ErrorEstimate, Residual, estimate_error, reconstruct, assemble
 
 end
