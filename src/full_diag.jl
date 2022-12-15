@@ -17,7 +17,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀, fd::FullDiagonalization)
     end
     (values=Λ[1:n_target], vectors=Ψ[:, 1:n_target])
 end
-# TODO: combine into one function using args...
+# TODO: combine into one function using args...?
 function solve(h::AffineDecomposition, b::Matrix, μ, fd::FullDiagonalization)
     Λ, φ = eigen(Hermitian(h(μ)), Hermitian(b)) 
     n_target = fd.n_target

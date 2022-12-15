@@ -1,5 +1,5 @@
-struct RegularGrid{D} <: AbstractArray{SVector{D,Number},D}
-    points::Array{SVector{D,Number},D}
+struct RegularGrid{D,N<:Number} <: AbstractArray{SVector{D,N},D}
+    points::Array{SVector{D,N},D}
     ranges::Vector{StepRangeLen}
 end
 function RegularGrid(ranges::Vararg{<:StepRangeLen})
@@ -11,7 +11,7 @@ function RegularGrid(ranges::Vararg{<:StepRangeLen})
     for idx in CartesianIndices(points)
         points[idx] = SVector([ranges[d][idx[d]] for d = 1:Dim]...)
     end
-    RegularGrid{Dim}(points, [ranges...])
+    RegularGrid{Dim,T}(points, [ranges...])
 end
 
 # AbstractArray interface
@@ -25,6 +25,7 @@ Base.getindex(grid::RegularGrid{D}, I::Vararg{Int,D}) where {D} = getindex(grid.
 bounds(grid::RegularGrid) = [[first(r), last(r)] for r in grid.ranges]
 
 # Shift grid points by D-dimensional offset vector
+# TODO: shift function
 shift(grid::RegularGrid, μ_shift) = error()
 
 # Check if given parameter point is in convex hull of grid

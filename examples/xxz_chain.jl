@@ -42,11 +42,12 @@ function xxz_chain(L)
 end
 
 ## Offline parameters
-L = 10
+L = 8
 H_XXZ = xxz_chain(L)
 greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64)
+# TODO: fix iteration for n_target=1 (terminates after n=2) -> only for full diagonalization?
 fulldiag = FullDiagonalization(; n_target=L+1, tol_degeneracy=1e-4) # m = L + 1 degeneracy at (Δ, h/J) = (-1, 0)
-# TODO: fix iteration for n_target=1 (terminates after n=2)
+# TODO: fix weird behavior for n_target=1 and tol_degeneracy>0
 lobpcg = LOBPCG(; tol=1e-9, n_target=1, tol_degeneracy=0.0)
 compressalg = QRCompress(; full_orthogonalize=false, tol_qr=1e-10)
 # compressalg = nothing
@@ -56,12 +57,12 @@ hJ = range(0.0, 3.5, 40)
 grid_train = RegularGrid(Δ, hJ);
 
 ## Offline phase (RB assembly)
-diagnostics = DFBuilder()
+dfbuilder = DFBuilder()
 basis, h, info = assemble(
     H_XXZ, grid_train, greedy, lobpcg, compressalg;
-    callback=diagnostics ∘ print_callback, init_from_rb=false,
+    callback=dfbuilder ∘ print_callback, init_from_rb=false,
 )
-diagnostics = diagnostics.df  # TODO: improve DataFrame management
+diagnostics = dfbuilder.df;
 
 ## Offline phase (observable compression)
 M = AffineDecomposition([H_XXZ.terms[3]], μ -> [2 / L])
@@ -93,7 +94,7 @@ hm = heatmap(
     clims=(0.0, 1.0),
     leg=false,
 )
-plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:green3)
+plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:fuchsia)
 scatter!(
     hm,
     [μ[1] for μ in diagnostics.parameter],

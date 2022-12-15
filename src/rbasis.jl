@@ -12,9 +12,18 @@ struct RBasis{T<:Number,P<:AbstractVector,M<:AbstractMatrix{T},N<:Union{Abstract
     metric::Matrix{T}
 end
 
-dim(basis::RBasis) = size(basis.snapshots, 2)
+dimension(basis::RBasis) = size(basis.snapshots, 2)
 n_truthsolve(basis::RBasis) = length(unique(basis.parameters))
 multiplicity(basis::RBasis) = [count(x -> x == μ, basis.parameters) for μ in unique(basis.parameters)]
+
+# Compression/orthonormalization algorithm using QR decomposition
+struct QRCompress
+    full_orthogonalize::Bool
+    tol_qr::Float64
+end
+function QRCompress(; full_orthogonalize=false, tol_qr=1e-10)
+    QRCompress(full_orthogonalize, tol_qr)
+end
 
 # Extend basis by vectors using QR compression/orthonormalization
 function extend!(basis::RBasis, Ψ, μ, ::Nothing)
@@ -31,7 +40,6 @@ function extend!(basis::RBasis, Ψ, μ, qrcomp::QRCompress)
         max_per_row = dropdims(maximum(abs, fact.R; dims=2); dims=2)
         keep = findlast(max_per_row .> qrcomp.tol_qr) - size(basis, 2)
         (keep ≤ 0) && (return basis, keep)
-        # TODO: adjust keep to same meaning as in `else`
 
         v_norm = abs(fact.R[keep, keep])
         B_new = Matrix(fact.Q)[:, 1:keep]

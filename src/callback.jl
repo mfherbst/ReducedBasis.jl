@@ -1,5 +1,6 @@
 function print_callback(info::NamedTuple)
     info = merge(info, (; iter_time=TimerOutputs.prettytime(time_ns() - info.t)))
+
     if info.state == :run
         info = merge(info, (; metric_norm=norm(info.basis.metric - I)))
         if isone(info.iteration)
@@ -7,15 +8,17 @@ function print_callback(info::NamedTuple)
                     "n", "max. err", "‖BᵀB-I‖", "time", "μ")
             println("-"^60)
         end
+        μ_round = round.(info.μ; digits=3) # Print rounded parameter vector
         @printf("%-3s    %-8.3g    %-8.3g    %-6s    %-8s\n",
-                info.iteration, info.err_max, info.metric_norm, info.iter_time, info.μ)
+                info.iteration, info.err_max, info.metric_norm, info.iter_time, μ_round)
     elseif info.state == :finalize
         println("-"^60, "\ntotal time elapsed: $(info.iter_time)\n", "-"^60)
     else
         @warn "Invalid info state:" info.state
     end
+
     flush(stdout)  # Flush e.g. to enable live printing on cluster
-    return info
+    info
 end
 
 struct DFBuilder
@@ -36,5 +39,5 @@ function (builder::DFBuilder)(info::NamedTuple)
         # push standard data into DataFrame
         push!(builder.df, [info.iteration, info.err_max, info.metric_norm, info.iter_time, info.μ])
     end
-    merge(info, (; builder)) # Insert DFbuilder into info and return
+    merge(info, (; builder)) # Insert DFBuilder into info and return
 end

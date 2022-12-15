@@ -10,11 +10,8 @@ using Printf
 include("grid.jl")
 export RegularGrid, bounds, shift, in_bounds
 
-include("compressalg.jl")
-export QRCompress
-
 include("rbasis.jl")
-export RBasis, dim, n_truthsolve, multiplicity, extend
+export RBasis, QRCompress, dimension, n_truthsolve, multiplicity, extend!
 
 include("affine_decomposition.jl")
 export AffineDecomposition, n_terms, compress
@@ -23,11 +20,20 @@ include("full_diag.jl")
 include("lobpcg.jl")
 export FullDiagonalization, LOBPCG, solve
 
+include("mpsbasis.jl")
+include("dmrg.jl")
+export MPSColumns, EigenDecomposition, DMRG, reconstruct
 
 include("callback.jl")
 export DFBuilder, print_callback
 
+include("hamiltonian_cache.jl")
+export HamiltonianCache
+
 include("greedy.jl")
-export Greedy, ErrorEstimate, Residual, estimate_error, reconstruct, assemble
+export Greedy, ErrorEstimate, Residual, estimate_error, estimate_gs, assemble
+
+include("pod.jl")
+export POD
 
 end
