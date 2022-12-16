@@ -20,6 +20,7 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [compat]
 DFTK = "0.5"
+ITensors = "0.3"
 MKL = "0.6"
 StaticArrays = "1"
 TimerOutputs = "0.5"
