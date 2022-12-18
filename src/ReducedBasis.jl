@@ -6,6 +6,8 @@ using StaticArrays
 using TimerOutputs
 using DataFrames
 using Printf
+using ProgressMeter
+using ITensors
 
 include("grid.jl")
 export RegularGrid, bounds, shift, in_bounds
@@ -21,8 +23,9 @@ include("lobpcg.jl")
 export FullDiagonalization, LOBPCG, solve
 
 include("mpsbasis.jl")
+export MPSColumns, EigenDecomposition, overlap_matrix, reconstruct, estimate_gs
 include("dmrg.jl")
-export MPSColumns, EigenDecomposition, DMRG, reconstruct
+export DMRG, default_sweeps, default_observer
 
 include("callback.jl")
 export DFBuilder, print_callback
@@ -31,7 +34,7 @@ include("hamiltonian_cache.jl")
 export HamiltonianCache
 
 include("greedy.jl")
-export Greedy, ErrorEstimate, Residual, estimate_error, estimate_gs, assemble
+export Greedy, ErrorEstimate, Residual, estimate_error, assemble
 
 include("pod.jl")
 export POD

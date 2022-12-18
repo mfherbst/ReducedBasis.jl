@@ -3,6 +3,7 @@ using Revise
 using LinearAlgebra
 using SparseArrays
 using ProgressMeter
+using ITensors
 using Plots
 using ReducedBasis
 
@@ -38,18 +39,40 @@ function xxz_chain(L)
     ])
     H3 = 0.5 * sum([local_to_global(L, σz, i) for i = 1:L])
     coefficient_map = μ -> [1.0, μ[1], -μ[2]]
-    return AffineDecomposition([H1, H2, H3], coefficient_map)
+    AffineDecomposition([H1, H2, H3], coefficient_map)
+end
+function xxz_chain(sites::IndexSet)
+    @assert all(hastags.(sites, "S=1/2")) "Site type must be S=1/2"
+    xy_term = OpSum()
+    zz_term = OpSum()
+    magn_term = OpSum()
+    for i = 1:length(sites)-1
+        xy_term += 0.5, "S+", i, "S-", i + 1
+        xy_term += 0.5, "S-", i, "S+", i + 1
+        zz_term += "Sz", i, "Sz", i + 1
+        magn_term += "Sz", i
+    end
+    magn_term += "Sz", length(sites) # Add last magnetization term
+    coefficient_map = μ -> [1.0, μ[1], -μ[2]]
+    AffineDecomposition([MPO(xy_term, sites), MPO(zz_term, sites), MPO(magn_term, sites)], coefficient_map)
 end
 
 ## Offline parameters
-L = 8
-H_XXZ = xxz_chain(L)
+L = 6
+sites = siteinds("S=1/2", L)
+# H_XXZ = xxz_chain(L)
+H_XXZ = xxz_chain(sites)
 greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64)
+pod = POD(; n_truth=64)
 # TODO: fix iteration for n_target=1 (terminates after n=2) -> only for full diagonalization?
 fulldiag = FullDiagonalization(; n_target=L+1, tol_degeneracy=1e-4) # m = L + 1 degeneracy at (Δ, h/J) = (-1, 0)
 # TODO: fix weird behavior for n_target=1 and tol_degeneracy>0
-lobpcg = LOBPCG(; tol=1e-9, n_target=1, tol_degeneracy=0.0)
-compressalg = QRCompress(; full_orthogonalize=false, tol_qr=1e-10)
+lobpcg = LOBPCG(; n_target=L+1, tol_degeneracy=1e-4, tol=1e-9)
+dm = DMRG(; n_target=1, tol_degeneracy=0.0,
+            sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000),
+            observer=() -> default_observer(; energy_tol=1e-9))
+# compressalg = QRCompress(; full_orthogonalize=false, tol_qr=1e-10)
+compressalg = EigenDecomposition(; cutoff=1e-6)
 # compressalg = nothing
 
 Δ = range(-1.0, 2.5, 40)
@@ -58,8 +81,9 @@ grid_train = RegularGrid(Δ, hJ);
 
 ## Offline phase (RB assembly)
 dfbuilder = DFBuilder()
+# basis, h, info = assemble(H_XXZ, grid_train, pod, lobpcg)
 basis, h, info = assemble(
-    H_XXZ, grid_train, greedy, lobpcg, compressalg;
+    H_XXZ, grid_train, greedy, dm, compressalg;
     callback=dfbuilder ∘ print_callback, init_from_rb=false,
 )
 diagnostics = dfbuilder.df;
@@ -89,9 +113,9 @@ hm = heatmap(
     magnetization';  # transpose to have rows as x-axis
     xlabel=raw"$\Delta$",
     ylabel=raw"$h/J$",
-    title="magnetization "*raw"$\langle M \rangle = \frac{2}{L}\sum_{i=1}^L S^z_i $",
+    title="magnetization "*raw"$\langle M \rangle = \frac{2}{L}\sum_{i=1}^L S^z_i$",
     colorbar=true,
-    clims=(0.0, 1.0),
+    # clims=(0.0, 1.0),
     leg=false,
 )
 plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:fuchsia)

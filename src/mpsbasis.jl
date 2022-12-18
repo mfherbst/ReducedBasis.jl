@@ -4,22 +4,29 @@ struct MPSColumns{T<:Number} <: AbstractMatrix{T}
 end
 function MPSColumns(cols::Vector{MPS})
     @assert all(length.(cols) .== length(cols[1])) "All column MPS have to be of the same length"
-    MPSColumns(cols, Hermitian(outer(cols, cols)))
+    MPSColumns(cols, Hermitian(overlap_matrix(cols, cols)))
 end
 
 # AbstractMatrix interface
-Base.length(mc::MPSColumns) = length(mc.cols[1])  # Length L of MPS (same for all columns)
+Base.length(mc::MPSColumns) = length(mc.cols[1])  # Length L of MPS (same for all columns); TODO: rename?
 Base.size(mc::MPSColumns) = (prod(dim.(siteinds(mc.cols[1]))), length(mc.cols))
+Base.size(mc::MPSColumns, i::Int) = size(mc)[i]
 Base.getindex(mc::MPSColumns, i::Int) = getindex(mc.cols, i)
 
-# Outer product of vectors of MPS for computing overlap matrix
-function ITensors.outer(Ψ₁::Vector{MPS}, Ψ₂::Vector{MPS})
-    overlaps = Matrix{ComplexF64}(undef, length(Ψ₁), length(Ψ₂))
-    for j in eachindex(Ψ₂), i = j:length(Ψ₁)
-        overlaps[i, j] = inner(Ψ₁[i], Ψ₂[j])
+# Overlap matrix of two vectors of MPS: Sᵢⱼ = ⟨Ψᵢ|Ψⱼ⟩
+function overlap_matrix(v1::Vector{MPS}, v2::Vector{MPS})
+    overlaps = Matrix{ComplexF64}(undef, length(v1), length(v2))
+    for j in eachindex(v2), i = j:length(v1)
+        overlaps[i, j] = inner(v1[i], v2[j])
         overlaps[j, i] = overlaps[i, j]' # Use symmetry of dot product
     end
     overlaps
+end
+overlap_matrix(mc1::MPSColumns, mc2::MPSColumns) = overlap_matrix(mc1.cols, mc2.cols)
+
+# Wrapper: apply operator to all MPS in vector of MPS
+function ITensors.apply(o, mc::MPSColumns; kwargs...)
+    Vector{MPS}(map(mps -> apply(o, mps; kwargs...), mc.cols))  # TODO: return type different from mc type?
 end
 
 # Reconstruct MPS in MPSColumns to Hilbert space dimensional vectors
@@ -43,6 +50,22 @@ function reconstruct(mps::MPS)
     reshape(vec, length(vec))
 end
 
+# MPS initial guess at some parameter point
+function estimate_gs(basis::RBasis{T,P,MPSColumns,N}, h::AffineDecomposition, μ, solver_online) where {T,P,N}
+    _, φ_rb = solve(h, basis.metric, μ, solver_online)
+    φ_rb′ = basis.vectors * φ_rb
+    Φ_mps = MPS[]
+    for col in eachcol(φ_rb′)  # Add MPS and multiply by φ-dependent coefficients
+        mps = col[1] * basis.snapshots.cols[1]
+        for k = 2:dimension(basis)
+            mps = +(mps, col[k] * basis.snapshots.cols[k]; kwargs...)
+        end
+        push!(Φ_mps, mps)
+    end
+
+    Φ_mps
+end
+
 # Compression/orthonormalization via eigenvalue decomposition (as in POD)
 struct EigenDecomposition
     cutoff::Float64
@@ -51,12 +74,12 @@ EigenDecomposition(; cutoff=1e-6) = EigenDecomposition(cutoff)
 
 # Efficient extension of MPSColumns by one column
 function extend!(
-    basis::RBasis{T,P,MPSColumns,N}, mps::Vector{MPS}, μ, ed::EigenDecomposition
+    basis::RBasis{T,P,<:MPSColumns,N}, mps::MPSColumns, μ, ed::EigenDecomposition
 ) where {T,P,N}
-    @assert all(length.(mps) .== length(basis.snapshots)) "MPS must have same length as column MPS"
-    append!(basis.snapshots.cols, mps)
+    @assert all(length(mps) .== length(basis.snapshots)) "MPS must have same length as column MPS"
+    append!(basis.snapshots.cols, mps.cols)
     d_basis = dimension(basis)
-    m = length(mps)
+    m = size(mps, 2)
 
     # New overlaps without recalculating elements
     overlaps_new = zeros(T, d_basis, d_basis)
@@ -84,7 +107,7 @@ function extend!(
         if iszero(keep)  # Return old basis, if no significant snapshots can be added
             # Remove new snapshots from MPSColumns (per-reference)
             splice!(basis.snapshots.cols, d_basis-m+1:d_basis)
-            return basis, keep, λ_error_trunc, minimum(λ)
+            return basis, keep, λ_error_trunc, minimum(Λ)
         end
 
         if idx_trunc != d_basis  # Truncate/compress
@@ -103,4 +126,10 @@ function extend!(
         basis.parameters, vectors_new, vectors_new' * overlaps_new * vectors_new
     ),
     keep, λ_error_trunc, minimum(Λ)
+end
+
+# For compression of MPO AffineDecomposition with MPS
+function compress(mpo::MPO, basis::RBasis{T,P,<:MPSColumns,N}) where {T,P,N}
+    matel = overlap_matrix(basis.snapshots.cols, apply(mpo, basis.snapshots))
+    basis.vectors * matel * basis.vectors
 end

@@ -6,7 +6,7 @@ function FullDiagonalization(; n_target=1, tol_degeneracy=0.0)
     FullDiagonalization(n_target, tol_degeneracy)
 end
 
-function solve(H::AffineDecomposition, μ, Ψ₀, fd::FullDiagonalization)
+function solve(H::AffineDecomposition, μ, _, fd::FullDiagonalization)
     H_matrix = Hermitian(H(μ))  # Hamiltonian are Hermitian by assumption
     # Convert to dense matrix if sparse
     issparse(H_matrix) && (H_matrix = Hermitian(Matrix(H_matrix)))

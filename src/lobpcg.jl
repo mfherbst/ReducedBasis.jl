@@ -39,9 +39,9 @@ diag_lobpcg(A, X0; kwargs...) = DFTK.lobpcg_hyper(A, X0; kwargs...)
 
 # LOBPCG parameter struct
 struct LOBPCG
-    tol::Float64
     n_target::Int
     tol_degeneracy::Float64
+    tol::Float64
     maxiter::Int
     n_ep_extra::Int # What is this actually doing? -> rename?
     shift::Float64
@@ -49,8 +49,8 @@ struct LOBPCG
     dense_fallback::Bool
     maxdiagonal::Int
 end
-function LOBPCG(; tol=1e-9, n_target=1, tol_degeneracy=0.0, maxiter=300, n_ep_extra=0, shift=-100, verbose=false, dense_fallback=true, maxdiagonal=400)
-    LOBPCG(tol, n_target, tol_degeneracy, maxiter, n_ep_extra, shift, verbose, dense_fallback, maxdiagonal)
+function LOBPCG(; n_target=1, tol_degeneracy=0.0, tol=1e-9, maxiter=300, n_ep_extra=0, shift=-100, verbose=false, dense_fallback=true, maxdiagonal=400)
+    LOBPCG(n_target, tol_degeneracy, tol, maxiter, n_ep_extra, shift, verbose, dense_fallback, maxdiagonal)
 end
 
 # LOBPCG truth solve

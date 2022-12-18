@@ -25,6 +25,10 @@ function estimate_gs(basis::RBasis, h::AffineDecomposition, μ, solver_online)
     basis.snapshots * basis.vectors * φ_rb
 end
 
+# Overlap matrix of column vectors of two matrices
+# TODO: Is this really necessary?
+overlap_matrix(m1::Matrix, m2::Matrix) = m1' * m2
+
 function assemble(
     H::AffineDecomposition,
     grid,
@@ -42,7 +46,7 @@ function assemble(
     t_init = time_ns()
     μ₁ = grid[1]
     truth = solve(H, μ₁, nothing, solver_truth)
-    basis = RBasis(truth.vectors, fill(μ₁, size(truth.vectors, 2)), I, truth.vectors' * truth.vectors)
+    basis = RBasis(truth.vectors, fill(μ₁, size(truth.vectors, 2)), I, Matrix(overlap_matrix(truth.vectors, truth.vectors)))
     h_cache = HamiltonianCache(H, basis)
     info = (; iteration=1, err_max=NaN, μ=μ₁, basis, h_cache, t=t_init, state=:run)
     callback(info)

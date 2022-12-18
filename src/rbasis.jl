@@ -1,6 +1,6 @@
 # T: floating-point type
 # P: type of the parameter vector (e.g. SVector{3, T})
-struct RBasis{T<:Number,P<:AbstractVector,M<:AbstractMatrix{T},N<:Union{AbstractMatrix{T}, UniformScaling}}
+struct RBasis{T<:Number,P<:AbstractVector,M<:AbstractMatrix{T},N<:Union{AbstractMatrix{T},UniformScaling}}
     # Column-wise truth solves yᵢ at certain parameter values μᵢ
     snapshots::M
     # Parameter values μᵢ associated with truth solve yᵢ
@@ -9,6 +9,7 @@ struct RBasis{T<:Number,P<:AbstractVector,M<:AbstractMatrix{T},N<:Union{Abstract
     # Coefficients making up the reduced basis vectors as truthsolves * vectors
     vectors::N
     # Overlap between basis vectors, equivalent to (V'*Y'*Y*V)
+    # TODO: use Hermitian?
     metric::Matrix{T}
 end
 
