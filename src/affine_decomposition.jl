@@ -16,9 +16,12 @@ end
 function compress(ad::AffineDecomposition, basis::RBasis)
     AffineDecomposition([compress(term, basis) for term in ad.terms], ad.coefficient_map)
 end
-
-# General compression method
-# Different methods for specific m-types (e.g. typeof(m) = Vectors{MPS} etc.)
+# Vector-type specific compression methods
 function compress(m::AbstractMatrix, basis::RBasis)
-    basis.vectors' * (basis.snapshots' * (m * basis.snapshots)) * basis.vectors
+    B = hcat(basis.snapshots...) * basis.vectors
+    B' * m * B
+end
+function compress(mpo::ApproxMPO, basis::RBasis{T,P,MPS,N}) where {T,P,N}
+    matel = overlap_matrix(basis.snapshots, map(Ψ -> mpo * Ψ, basis.snapshots))
+    basis.vectors' * matel * basis.vectors
 end

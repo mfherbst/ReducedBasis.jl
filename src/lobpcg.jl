@@ -54,7 +54,7 @@ function LOBPCG(; n_target=1, tol_degeneracy=0.0, tol=1e-9, maxiter=300, n_ep_ex
 end
 
 # LOBPCG truth solve
-function solve(H::AffineDecomposition, μ, Ψ₀, lobpcg::LOBPCG)
+function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg::LOBPCG)
     if isnothing(Ψ₀)  # Build initial guess if needed
         Ψ₀ = Matrix(qr(randn(size(H, 1), lobpcg.n_target + lobpcg.n_ep_extra)).Q)
     else
@@ -97,7 +97,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀, lobpcg::LOBPCG)
             # All relevant eigenpairs are converged
             lobpcg.verbose && println("Converged in $iterations iterations.")
             return (
-                vectors=res.X[:, 1:n_target],
+                vectors=[res.X[:, i] for i = 1:n_target],
                 values=res.λ[1:n_target] .- lobpcg.shift,
                 converged=true,
                 iterations=iterations,
@@ -121,7 +121,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀, lobpcg::LOBPCG)
     if !lobpcg.dense_fallback
         @warn "Accepting non-converged state."
         return (
-            vectors=res.X[:, 1:n_target],
+            vectors=[res.X[:, i] for i = 1:n_target],
             values=res.λ[1:n_target] .- lobpcg.shift,
             converged=false,
             iterations=iterations,
@@ -137,7 +137,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀, lobpcg::LOBPCG)
         end
 
         return (
-            vectors=vec[:, 1:n_target],
+            vectors=[vec[:, i] for i = 1:n_target],
             values=val[1:n_target] .- lobpcg.shift,
             converged=true,
             # iterations=0,  # Still return original number of iterations?

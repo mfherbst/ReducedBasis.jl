@@ -15,7 +15,7 @@ function solve(H::AffineDecomposition, μ, _, fd::FullDiagonalization)
     if fd.tol_degeneracy > 0.0
         n_target = findlast(abs.(Λ .- Λ[1]) .< fd.tol_degeneracy)
     end
-    (values=Λ[1:n_target], vectors=Ψ[:, 1:n_target])
+    (values=Λ[1:n_target], vectors=[Ψ[:, i] for i = 1:n_target])
 end
 # TODO: combine into one function using args...?
 function solve(h::AffineDecomposition, b::Matrix, μ, fd::FullDiagonalization)

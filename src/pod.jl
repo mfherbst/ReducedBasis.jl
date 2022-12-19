@@ -13,17 +13,18 @@ function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
     @showprogress "Truth solving on $(size(grid)) grid..." for (i, μ) in enumerate(grid)
         Ψ₀ = Matrix(qr(randn(size(H, 1), solver_truth.n_target)).Q)
         sol = solve(H, μ, Ψ₀, solver_truth)
-        vectors[i] = sol.vectors
-        append!(parameters, fill(μ, size(sol.vectors, 2)))
+        vectors[i] = hcat(sol.vectors...)
+        append!(parameters, fill(μ, length(sol.vectors)))
     end
 
     # SVD to obtain orthogonal basis
     U, Σ, V = svd(hcat(vectors...))
 
     # Extract reduced basis
-    snapshots = U[:, 1:pod.n_truth]
+    snapshots = [U[:, i] for i = 1:pod.n_truth]
+    BᵀB = snapshots' * snapshots
     # TODO: reorder parameters according to singular value ordering?
-    basis = RBasis(snapshots, parameters, I, snapshots' * snapshots)
+    basis = RBasis(snapshots, parameters, I, BᵀB, BᵀB)
 
     # Hamiltonian compressions
     h_cache = HamiltonianCache(H, basis)

@@ -13,28 +13,29 @@ include("grid.jl")
 export RegularGrid, bounds, shift, in_bounds
 
 include("rbasis.jl")
-export RBasis, QRCompress, dimension, n_truthsolve, multiplicity, extend!
+export RBasis, QRCompress, EigenDecomposition
+export dimension, n_truthsolve, multiplicity, overlap_matrix, extend!
 
 include("affine_decomposition.jl")
 export AffineDecomposition, n_terms, compress
+
+include("hamiltonian_cache.jl")
+export HamiltonianCache
 
 include("full_diag.jl")
 include("lobpcg.jl")
 export FullDiagonalization, LOBPCG, solve
 
-include("mpsbasis.jl")
-export MPSColumns, EigenDecomposition, overlap_matrix, reconstruct, estimate_gs
+include("mps_snapshots.jl")
+export ApproxMPO, matrix_size, reconstruct
 include("dmrg.jl")
 export DMRG, default_sweeps, default_observer
 
 include("callback.jl")
 export DFBuilder, print_callback
 
-include("hamiltonian_cache.jl")
-export HamiltonianCache
-
 include("greedy.jl")
-export Greedy, ErrorEstimate, Residual, estimate_error, assemble
+export Greedy, ErrorEstimate, Residual, estimate_error, assemble, estimate_gs
 
 include("pod.jl")
 export POD

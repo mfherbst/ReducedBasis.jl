@@ -41,7 +41,7 @@ function xxz_chain(L)
     coefficient_map = μ -> [1.0, μ[1], -μ[2]]
     AffineDecomposition([H1, H2, H3], coefficient_map)
 end
-function xxz_chain(sites::IndexSet)
+function xxz_chain(sites::IndexSet; kwargs...)
     @assert all(hastags.(sites, "S=1/2")) "Site type must be S=1/2"
     xy_term = OpSum()
     zz_term = OpSum()
@@ -54,25 +54,29 @@ function xxz_chain(sites::IndexSet)
     end
     magn_term += "Sz", length(sites) # Add last magnetization term
     coefficient_map = μ -> [1.0, μ[1], -μ[2]]
-    AffineDecomposition([MPO(xy_term, sites), MPO(zz_term, sites), MPO(magn_term, sites)], coefficient_map)
+    AffineDecomposition(
+        [ApproxMPO(MPO(xy_term, sites); kwargs...), ApproxMPO(MPO(zz_term, sites); kwargs...), ApproxMPO(MPO(magn_term, sites); kwargs...)],
+        coefficient_map
+    )
 end
 
 ## Offline parameters
 L = 6
 sites = siteinds("S=1/2", L)
 # H_XXZ = xxz_chain(L)
-H_XXZ = xxz_chain(sites)
+H_XXZ = xxz_chain(sites; cutoff=1e-9)
 greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64)
 pod = POD(; n_truth=64)
 # TODO: fix iteration for n_target=1 (terminates after n=2) -> only for full diagonalization?
 fulldiag = FullDiagonalization(; n_target=L+1, tol_degeneracy=1e-4) # m = L + 1 degeneracy at (Δ, h/J) = (-1, 0)
 # TODO: fix weird behavior for n_target=1 and tol_degeneracy>0
 lobpcg = LOBPCG(; n_target=L+1, tol_degeneracy=1e-4, tol=1e-9)
-dm = DMRG(; n_target=1, tol_degeneracy=0.0,
+dm = DMRG(; n_target=L+1, tol_degeneracy=1e-4,
             sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000),
             observer=() -> default_observer(; energy_tol=1e-9))
+# TODO: fix `full_orthogonalize` (wrong residuals lead to doubly solved parameter points)
 # compressalg = QRCompress(; full_orthogonalize=false, tol_qr=1e-10)
-compressalg = EigenDecomposition(; cutoff=1e-6)
+compressalg = EigenDecomposition(; cutoff=1e-9)
 # compressalg = nothing
 
 Δ = range(-1.0, 2.5, 40)
@@ -86,6 +90,7 @@ basis, h, info = assemble(
     H_XXZ, grid_train, greedy, dm, compressalg;
     callback=dfbuilder ∘ print_callback, init_from_rb=false,
 )
+# TODO: enable init_from_rb for MPS RBM assembly
 diagnostics = dfbuilder.df;
 
 ## Offline phase (observable compression)
@@ -93,8 +98,8 @@ M = AffineDecomposition([H_XXZ.terms[3]], μ -> [2 / L])
 m = compress(M, basis);
 
 ## Online phase
-Δ_online = range(first(Δ), last(Δ), 500)
-hJ_online = range(first(hJ), last(hJ), 500)
+Δ_online = range(first(Δ), last(Δ), 150)
+hJ_online = range(first(hJ), last(hJ), 150)
 grid_online = RegularGrid(Δ_online, hJ_online)
 
 magnetization = Matrix{Float64}(undef, size(grid_online))
@@ -110,12 +115,12 @@ end
 hm = heatmap(
     grid_online.ranges[1],
     grid_online.ranges[2],
-    magnetization';  # transpose to have rows as x-axis
+    magnetization';  # Transpose to have rows as x-axis
     xlabel=raw"$\Delta$",
     ylabel=raw"$h/J$",
     title="magnetization "*raw"$\langle M \rangle = \frac{2}{L}\sum_{i=1}^L S^z_i$",
     colorbar=true,
-    # clims=(0.0, 1.0),
+    clims=(0.0, 1.0),
     leg=false,
 )
 plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:fuchsia)

@@ -24,17 +24,18 @@ default_observer(; energy_tol=1e-9) = DMRGObserver(; energy_tol)
 function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm::DMRG)
     if isnothing(Ψ₀)
         # last.(siteinds(...)) since MPOs have two physical indices per tensor, last for non-primed index
-        Ψ₀ = fill(randomMPS(last.(siteinds(H.terms[1])), dm.sweeps.maxdim[1]), dm.n_target)
+        Ψ₀ = fill(randomMPS(last.(siteinds(H.terms[1].mpo)), dm.sweeps.maxdim[1]), dm.n_target)
     end
     observer = dm.observer()
-    H_full = H(μ)  # TODO: test if this produces same result as full_mpo(...)
+    θ = H.coefficient_map(μ)
+    H_full = sum([θ[q] * H.terms[q].mpo for q = 1:n_terms(H)])  # TODO: rewrite for ApproxMPO; maybe MPO(H, μ)?
     E₁, Ψ₁ = dmrg(H_full, Ψ₀[1], dm.sweeps; observer, outputlevel=0)
     values, vectors = Float64[E₁,], MPS[Ψ₁,]
 
     if dm.tol_degeneracy > 0.0 && dm.n_target > 1
         converging, n = true, 2
         while converging
-            E, ψ = dmrg(
+            E_deg, Ψ_deg = dmrg(
                 H_full,
                 vectors,
                 Ψ₀[n],
@@ -42,9 +43,9 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
                 observer,
                 outputlevel=0
             )
-            if abs(E - values[end]) < dm.tol_degeneracy
-                push!(vectors, ψ)
-                push!(values, E)
+            if abs(E_deg - values[end]) < dm.tol_degeneracy
+                push!(vectors, Ψ_deg)
+                push!(values, E_deg)
                 converging = true
             else
                 converging = false
@@ -65,5 +66,5 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
         end
     end
 
-    (; values, vectors=MPSColumns(vectors), variances, iterations)
+    (; values, vectors, variances, iterations)
 end

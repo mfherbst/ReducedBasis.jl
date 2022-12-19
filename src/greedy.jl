@@ -22,12 +22,22 @@ end
 # TODO: Change name?
 function estimate_gs(basis::RBasis, h::AffineDecomposition, μ, solver_online)
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
-    basis.snapshots * basis.vectors * φ_rb
+    hcat(basis.snapshots...) * basis.vectors * φ_rb
 end
+function estimate_gs(basis::RBasis{T,P,MPS,N}, h::AffineDecomposition, μ, solver_online) where {T,P,N}
+    _, φ_rb = solve(h, basis.metric, μ, solver_online)
+    φ_rb′ = basis.vectors * φ_rb
+    Φ_mps = MPS[]
+    for col in eachcol(φ_rb′)  # Add MPS and multiply by φ-dependent coefficients
+        mps = col[1] * basis.snapshots[1]
+        for k = 2:dimension(basis)
+            mps = +(mps, col[k] * basis.snapshots[k]; kwargs...)  # TODO: how to incorporate kwargs?
+        end
+        push!(Φ_mps, mps)
+    end
 
-# Overlap matrix of column vectors of two matrices
-# TODO: Is this really necessary?
-overlap_matrix(m1::Matrix, m2::Matrix) = m1' * m2
+    Φ_mps
+end
 
 function assemble(
     H::AffineDecomposition,
@@ -46,7 +56,8 @@ function assemble(
     t_init = time_ns()
     μ₁ = grid[1]
     truth = solve(H, μ₁, nothing, solver_truth)
-    basis = RBasis(truth.vectors, fill(μ₁, size(truth.vectors, 2)), I, Matrix(overlap_matrix(truth.vectors, truth.vectors)))
+    BᵀB = overlap_matrix(truth.vectors, truth.vectors)
+    basis = RBasis(truth.vectors, fill(μ₁, length(truth.vectors)), I, BᵀB, BᵀB)
     h_cache = HamiltonianCache(H, basis)
     info = (; iteration=1, err_max=NaN, μ=μ₁, basis, h_cache, t=t_init, state=:run)
     callback(info)
