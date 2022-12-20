@@ -16,30 +16,32 @@ end
 
 dimension(basis::RBasis) = length(basis.snapshots)
 n_truthsolve(basis::RBasis) = length(unique(basis.parameters))
-multiplicity(basis::RBasis) = [count(x -> x == μ, basis.parameters) for μ in unique(basis.parameters)]
+function multiplicity(basis::RBasis)
+    return [count(x -> x == μ, basis.parameters) for μ in unique(basis.parameters)]
+end
 
 # Overlap matrix of two vectors of vecotrs: Sᵢⱼ = ⟨Ψᵢ|Ψⱼ⟩
 function overlap_matrix(v1::Vector{V}, v2::Vector{V}) where {V}
     overlaps = Matrix{ComplexF64}(undef, length(v1), length(v2))
-    for j in eachindex(v2), i = j:length(v1)
+    for j in eachindex(v2), i in j:length(v1)
         overlaps[i, j] = dot(v1[i], v2[j])
         overlaps[j, i] = overlaps[i, j]' # Use symmetry of dot product
     end
-    overlaps
+    return overlaps
 end
 
 # Compute overlaps of m newest snapshots
 function new_overlaps(basis::RBasis{T,P,V,N}, m::Int) where {T,P,V,N}
     d_basis = dimension(basis)
     overlaps = zeros(T, d_basis, d_basis)
-    overlaps[1:d_basis-m, 1:d_basis-m] = basis.snapshot_overlaps
-    for j = d_basis-m+1:d_basis
-        for i = 1:j
+    overlaps[1:(d_basis - m), 1:(d_basis - m)] = basis.snapshot_overlaps
+    for j in (d_basis - m + 1):d_basis
+        for i in 1:j
             overlaps[i, j] = dot(basis.snapshots[i], basis.snapshots[j])
             overlaps[j, i] = overlaps[i, j]'
         end
     end
-    overlaps
+    return overlaps
 end
 
 # Compression/orthonormalization algorithm using QR decomposition
@@ -48,7 +50,7 @@ struct QRCompress
     tol_qr::Float64
 end
 function QRCompress(; full_orthogonalize=false, tol_qr=1e-10)
-    QRCompress(full_orthogonalize, tol_qr)
+    return QRCompress(full_orthogonalize, tol_qr)
 end
 
 # Compression/orthonormalization via eigenvalue decomposition (as in POD)
@@ -60,11 +62,11 @@ EigenDecomposition(; cutoff=1e-6) = EigenDecomposition(cutoff)
 # Extension without orthogonalization
 function extend!(basis::RBasis, snapshots, μ, ::Nothing)
     append!(basis.snapshots, snapshots)
-    m = size(snapshots, 2)
+    m = length(snapshots)
     append!(basis.parameters, fill(μ, m))
     overlaps = new_overlaps(basis, m)
 
-    RBasis(basis.snapshots, basis.parameters, I, overlaps, overlaps), m
+    return RBasis(basis.snapshots, basis.parameters, I, overlaps, overlaps), m
 end
 # Extension using QR decomposition for orthogonalization/compression
 function extend!(basis::RBasis, snapshots, μ, qrcomp::QRCompress)
@@ -79,7 +81,7 @@ function extend!(basis::RBasis, snapshots, μ, qrcomp::QRCompress)
         keep = d_target - dimension(basis)
 
         v_norm = abs(fact.R[d_target, d_target])
-        snapshots_new = [fact.Q[:, i] for i = 1:d_target]
+        snapshots_new = [fact.Q[:, i] for i in 1:d_target]
         BᵀB = overlap_matrix(snapshots_new, snapshots_new)
         append!(basis.parameters, fill(μ, keep))
         newbasis = RBasis(snapshots_new, basis.parameters, I, BᵀB, BᵀB)
@@ -92,11 +94,11 @@ function extend!(basis::RBasis, snapshots, μ, qrcomp::QRCompress)
         keep = findlast(max_per_row .> qrcomp.tol_qr)
         isnothing(keep) && (return basis, keep)
 
-        v = [fact.Q[:, i] for i = 1:keep]
+        v = [fact.Q[:, i] for i in 1:keep]
         v_norm = abs(fact.R[keep, keep])
         newbasis, _ = extend!(basis, v, μ, nothing)
     end
-    newbasis, keep, v_norm
+    return newbasis, keep, v_norm
 end
 # Extension using eigenvalue decomposition for MPS RBasis
 function extend!(
@@ -122,22 +124,28 @@ function extend!(
         keep = idx_trunc - d_basis + m
         if iszero(keep)  # Return old basis, if no significant snapshots can be added
             # Remove new snapshots from MPSColumns (per-reference)
-            splice!(basis.snapshots, d_basis-m+1:d_basis)
+            splice!(basis.snapshots, (d_basis - m + 1):d_basis)
             return basis, keep, λ_error_trunc, minimum(Λ)
         end
 
         if idx_trunc != d_basis  # Truncate/compress
             Λ = Λ[1:idx_trunc]
             U = U[1:idx_trunc, 1:idx_trunc]
-            splice!(basis.snapshots, idx_trunc+1:d_basis)
+            splice!(basis.snapshots, (idx_trunc + 1):d_basis)
             overlaps = overlaps_new[1:idx_trunc, 1:idx_trunc]
-            λ_error_trunc = λ_errors[idx_trunc+1]
+            λ_error_trunc = λ_errors[idx_trunc + 1]
         end
     end
     append!(basis.parameters, fill(μ, keep))
     vectors_new = U * Diagonal(1 ./ sqrt.(abs.(Λ)))
 
-    RBasis(basis.snapshots, basis.parameters, vectors_new,
-           overlaps, vectors_new' * overlaps * vectors_new),
-    keep, λ_error_trunc, minimum(Λ)
+    return RBasis(
+        basis.snapshots,
+        basis.parameters,
+        vectors_new,
+        overlaps,
+        vectors_new' * overlaps * vectors_new,
+    ),
+    keep, λ_error_trunc,
+    minimum(Λ)
 end

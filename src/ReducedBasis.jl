@@ -16,6 +16,9 @@ include("rbasis.jl")
 export RBasis, QRCompress, EigenDecomposition
 export dimension, n_truthsolve, multiplicity, overlap_matrix, extend!
 
+include("mps_snapshots.jl")
+export ApproxMPO, matrix_size, reconstruct
+
 include("affine_decomposition.jl")
 export AffineDecomposition, n_terms, compress
 
@@ -26,8 +29,6 @@ include("full_diag.jl")
 include("lobpcg.jl")
 export FullDiagonalization, LOBPCG, solve
 
-include("mps_snapshots.jl")
-export ApproxMPO, matrix_size, reconstruct
 include("dmrg.jl")
 export DMRG, default_sweeps, default_observer
 

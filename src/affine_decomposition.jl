@@ -5,23 +5,32 @@ struct AffineDecomposition{D,M,F<:Function}
     coefficient_map::F
 end
 
-(ad::AffineDecomposition)(μ) = sum(ad.coefficient_map(μ) .* ad.terms)
 n_terms(ad::AffineDecomposition) = length(ad.terms)
 function Base.size(ad::AffineDecomposition, args...)
     @assert all(s -> s == size(ad.terms[1]), size.(ad.terms)) "Affine terms have different dimensions."
-    size(ad.terms[1], args...)
+    return size(ad.terms[1], args...)
+end
+
+# Construction of explicit operator at parameter point
+(ad::AffineDecomposition)(μ) = sum(ad.coefficient_map(μ) .* ad.terms)
+function (ad::AffineDecomposition{D,M,F})(μ) where {D,M<:ApproxMPO,F<:Function}
+    θ = ad.coefficient_map(μ)
+    opsum = +([θ[q] * term.opsum for (q, term) in enumerate(ad.terms)]...)
+    return MPO(opsum, last.(siteinds(ad.terms[1].mpo)))
 end
 
 # Returns compressed/reduced observable
 function compress(ad::AffineDecomposition, basis::RBasis)
-    AffineDecomposition([compress(term, basis) for term in ad.terms], ad.coefficient_map)
+    return AffineDecomposition(
+        [compress(term, basis) for term in ad.terms], ad.coefficient_map
+    )
 end
 # Vector-type specific compression methods
 function compress(m::AbstractMatrix, basis::RBasis)
     B = hcat(basis.snapshots...) * basis.vectors
-    B' * m * B
+    return B' * m * B
 end
 function compress(mpo::ApproxMPO, basis::RBasis{T,P,MPS,N}) where {T,P,N}
     matel = overlap_matrix(basis.snapshots, map(Ψ -> mpo * Ψ, basis.snapshots))
-    basis.vectors' * matel * basis.vectors
+    return basis.vectors' * matel * basis.vectors
 end

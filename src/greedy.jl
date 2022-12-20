@@ -6,37 +6,43 @@ function estimate_error(::Residual, μ, h²::AffineDecomposition, b, λ_rb, φ_r
     sum_of_squares = sum(zip(λ_rb, eachcol(φ_rb))) do (λ, φ)
         abs(φ' * h²_sum * φ - λ^2 * φ' * b * φ)
     end
-    sqrt(sum_of_squares)
+    return sqrt(sum_of_squares)
 end
 
 struct Greedy
     estimator::ErrorEstimate
     tol::Float64
     n_truth_max::Int
+    init_from_rb::Bool
 end
-function Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64)
-    Greedy(estimator, tol, n_truth_max)
+function Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=true)
+    return Greedy(estimator, tol, n_truth_max, init_from_rb)
 end
 
 # Reconstruct ground state from RB eigenvector
 # TODO: Change name?
-function estimate_gs(basis::RBasis, h::AffineDecomposition, μ, solver_online)
+function estimate_gs(
+    basis::RBasis, h::AffineDecomposition, μ, solver_offline, solver_online
+) # TODO: How to deal with redundant argument in this case?
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
-    hcat(basis.snapshots...) * basis.vectors * φ_rb
+    return hcat(basis.snapshots...) * basis.vectors * φ_rb
 end
-function estimate_gs(basis::RBasis{T,P,MPS,N}, h::AffineDecomposition, μ, solver_online) where {T,P,N}
+function estimate_gs(
+    basis::RBasis{T,P,MPS,N}, h::AffineDecomposition, μ, dm::DMRG, solver_online
+) where {T<:Number,P<:AbstractVector,N<:Union{AbstractMatrix{T},UniformScaling}}
+# TODO: How to avoid long subtyping?
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
     φ_rb′ = basis.vectors * φ_rb
     Φ_mps = MPS[]
     for col in eachcol(φ_rb′)  # Add MPS and multiply by φ-dependent coefficients
         mps = col[1] * basis.snapshots[1]
-        for k = 2:dimension(basis)
-            mps = +(mps, col[k] * basis.snapshots[k]; kwargs...)  # TODO: how to incorporate kwargs?
+        for k in 2:dimension(basis)
+            mps = +(mps, col[k] * basis.snapshots[k]; maxdim=dm.sweeps.maxdim[1])
         end
         push!(Φ_mps, mps)
     end
 
-    Φ_mps
+    return Φ_mps
 end
 
 function assemble(
@@ -45,12 +51,10 @@ function assemble(
     greedy::Greedy,
     solver_truth,
     compressalg;
-    solver_online=FullDiagonalization(
-        tol_degeneracy=solver_truth.tol_degeneracy,
-        n_target=solver_truth.n_target
+    solver_online=FullDiagonalization(;
+        tol_degeneracy=solver_truth.tol_degeneracy, n_target=solver_truth.n_target
     ),
-    init_from_rb=true,
-    callback=print_callback
+    callback=print_callback,
 )
     # TODO: First iteration separate? (to avoid annoying if-statements in for-loop)
     t_init = time_ns()
@@ -62,7 +66,7 @@ function assemble(
     info = (; iteration=1, err_max=NaN, μ=μ₁, basis, h_cache, t=t_init, state=:run)
     callback(info)
 
-    for n = 2:greedy.n_truth_max
+    for n in 2:(greedy.n_truth_max)
         t_iterstart = time_ns()
         # Compute residual on training grid and find maximum for greedy condition
         err_grid, λ_grid = similar(grid, Float64), similar(grid, Vector{Float64})
@@ -76,7 +80,11 @@ function assemble(
         μ_next = grid[idx_max]
 
         # Construct initial guess at μ_next and run truth solve
-        Ψ₀ = init_from_rb ? estimate_gs(basis, h_cache.h, μ_next, solver_online) : nothing
+        Ψ₀ = if greedy.init_from_rb
+            estimate_gs(basis, h_cache.h, μ_next, solver_truth, solver_online)
+        else
+            nothing
+        end
         truth = solve(H, μ_next, Ψ₀, solver_truth)
 
         # Append truth vector according to solver method
@@ -100,17 +108,27 @@ function assemble(
         h_cache = extend!(h_cache, basis)
 
         # Update iteration state info
-        info = (; iteration=n, err_grid, λ_grid, err_max, μ=μ_next, extend_info, basis, h_cache, t=t_iterstart, state=:run)
+        info = (;
+            iteration=n,
+            err_grid,
+            λ_grid,
+            err_max,
+            μ=μ_next,
+            extend_info,
+            basis,
+            h_cache,
+            t=t_iterstart,
+            state=:run,
+        )
         callback(info)
 
         # Exit iteration if residuals drops below tolerance
         if err_max < greedy.tol
-            # TODO: Use println(...) or @info() here?
             println("Reached residual target.")
             break
         end
     end
 
     callback((; t=t_init, state=:finalize))
-    basis, h_cache.h, info
+    return basis, h_cache.h, info
 end
