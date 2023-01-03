@@ -4,41 +4,42 @@ using LinearAlgebra
 using SparseArrays
 using StaticArrays
 using TimerOutputs
-using DataFrames
 using Printf
 using ProgressMeter
-using ITensors
 
+export RegularGrid
+export bounds, shift, in_bounds
 include("grid.jl")
-export RegularGrid, bounds, shift, in_bounds
 
-include("rbasis.jl")
 export RBasis, QRCompress, EigenDecomposition
 export dimension, n_truthsolve, multiplicity, overlap_matrix, extend!
+include("rbasis.jl")
 
-include("mps_snapshots.jl")
-export ApproxMPO, matrix_size, reconstruct
-
+export AffineDecomposition
+export n_terms, compress
 include("affine_decomposition.jl")
-export AffineDecomposition, n_terms, compress
 
-include("hamiltonian_cache.jl")
 export HamiltonianCache
+include("hamiltonian_cache.jl")
 
+export FullDiagonalization, LOBPCG
+export solve
 include("full_diag.jl")
 include("lobpcg.jl")
-export FullDiagonalization, LOBPCG, solve
 
-include("dmrg.jl")
-export DMRG, default_sweeps, default_observer
+export ApproxMPO, DMRG
+export reconstruct, default_sweeps
+include("mps.jl")
 
+export DFBuilder
+export print_callback
 include("callback.jl")
-export DFBuilder, print_callback
 
+export Greedy, ErrorEstimate, Residual
+export estimate_error, assemble, estimate_gs
 include("greedy.jl")
-export Greedy, ErrorEstimate, Residual, estimate_error, assemble, estimate_gs
 
-include("pod.jl")
 export POD
+include("pod.jl")
 
 end

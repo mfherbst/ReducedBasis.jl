@@ -26,7 +26,7 @@ function HamiltonianCache(H::AffineDecomposition, basis::RBasis)
 end
 
 # Compute only new HΨ and necessary matrix elements
-function extend!(hc::HamiltonianCache, basis::RBasis{T,P,V,N}) where {T,P,V,N}
+function extend!(hc::HamiltonianCache, basis::RBasis{V,T}) where {V,T}
     d_basis = dimension(basis)
     m = multiplicity(basis)[end]  # Multiplicity of last truth solve
 

@@ -21,27 +21,16 @@ end
 
 # Reconstruct ground state from RB eigenvector
 function estimate_gs(
-    basis::RBasis, h::AffineDecomposition, μ, solver_offline, solver_online
+    basis::RBasis, h::AffineDecomposition, μ, _, solver_online
 )  # TODO: How to deal with redundant argument in this case?
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
-    return hcat(basis.snapshots...) * basis.vectors * φ_rb
-end
-function estimate_gs(
-    basis::RBasis{T,P,MPS,N}, h::AffineDecomposition, μ, dm::DMRG, solver_online
-) where {T<:Number,P<:AbstractVector,N<:Union{AbstractMatrix{T},UniformScaling}}
-    # TODO: How to avoid long subtyping?
-    _, φ_rb = solve(h, basis.metric, μ, solver_online)
-    φ_rb′   = basis.vectors * φ_rb
-    Φ_mps   = MPS[]
-    for col in eachcol(φ_rb′)  # Add MPS and multiply by φ-dependent coefficients
-        mps = col[1] * basis.snapshots[1]
-        for k in 2:dimension(basis)
-            mps = +(mps, col[k] * basis.snapshots[k]; maxdim=dm.sweeps.maxdim[1])
-        end
-        push!(Φ_mps, mps)
+    φ_trans = basis.vectors * φ_rb
+    Φ_rb = Matrix{eltype(φ_trans)}(undef, length(basis.snapshots[1], size(φ_rb, 2)))
+    for i in eachindex(basis.snapshots)
+        Φ_rb[:, i] .= basis.snapshots[i] * φ_trans
     end
-
-    return Φ_mps
+    Φ_rb
+    # return hcat(basis.snapshots...) * basis.vectors * φ_rb
 end
 
 function assemble(
@@ -62,13 +51,14 @@ function assemble(
     BᵀB     = overlap_matrix(truth.vectors, truth.vectors)
     basis   = RBasis(truth.vectors, fill(μ₁, length(truth.vectors)), I, BᵀB, BᵀB)
     h_cache = HamiltonianCache(H, basis)
-    info    = (; iteration=1, err_max=NaN, μ=μ₁, basis, h_cache, t=t_init, state=:run)
+    info    = (; iteration=1, err_max=NaN, μ=μ₁, basis, h_cache, t=t_init, state=:iterate)
     callback(info)
 
     for n in 2:(greedy.n_truth_max)
         t_iterstart = time_ns()
         # Compute residual on training grid and find maximum for greedy condition
-        err_grid, λ_grid = similar(grid, Float64), similar(grid, Vector{Float64})
+        err_grid = similar(grid, Float64)
+        λ_grid   = similar(grid, Vector{Float64})
         for (idx, μ) in pairs(grid)
             λ_grid[idx], φ_rb = solve(h_cache.h, basis.metric, μ, solver_online)
             err_grid[idx] = estimate_error(
@@ -84,10 +74,10 @@ function assemble(
         end
 
         # Construct initial guess at μ_next and run truth solve
-        Ψ₀ = if greedy.init_from_rb
-            estimate_gs(basis, h_cache.h, μ_next, solver_truth, solver_online)
+        if greedy.init_from_rb
+            Ψ₀ = estimate_gs(basis, h_cache.h, μ_next, solver_truth, solver_online)
         else
-            nothing
+            Ψ₀ = nothing
         end
         truth = solve(H, μ_next, Ψ₀, solver_truth)
 
@@ -122,7 +112,7 @@ function assemble(
             basis,
             h_cache,
             t=t_iterstart,
-            state=:run,
+            state=:iterate,
         )
         callback(info)
 

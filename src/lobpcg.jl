@@ -1,9 +1,9 @@
-using DFTK: DFTK # TODO: remove when out-sourced
+using DFTK  # TODO: remove when out-sourced
 using SuiteSparse: SuiteSparse
 
 # Eigensolver utility
 struct DummyInplace
-    M
+    M::Any
 end
 LinearAlgebra.ldiv!(d::DummyInplace, x) = x .= (d.M \ x)
 prepare_preconditioner(M::SuiteSparse.CHOLMOD.Factor) = DummyInplace(M)
@@ -35,51 +35,26 @@ Supported kwargs
  - ortho_tol
  - display_progress
 """
-diag_lobpcg(A, X0; kwargs...) = DFTK.lobpcg_hyper(A, X0; kwargs...)
+diag_lobpcg(A, X0; kwargs...) = lobpcg_hyper(A, X0; kwargs...)
 
 # LOBPCG parameter struct
-struct LOBPCG
-    n_target::Int
-    tol_degeneracy::Float64
-    tol::Float64
-    maxiter::Int
-    n_ep_extra::Int # TODO: What is this actually doing? -> rename?
-    shift::Float64
-    verbose::Bool
-    dense_fallback::Bool
-    maxdiagonal::Int
-end
-function LOBPCG(;
-    n_target=1,
-    tol_degeneracy=0.0,
-    tol=1e-9,
-    maxiter=300,
-    n_ep_extra=4,
-    shift=-100,
-    verbose=false,
-    dense_fallback=true,
-    maxdiagonal=400,
-)
-    @assert !(tol_degeneracy == 0.0 && n_target > 1) "Can only target one state, if degeneracy is disabled"
-    @assert !(n_target == 1 && tol_degeneracy > 0.0) "Only one state will be targetted, but degeneracy is enabled"
-    return LOBPCG(
-        n_target,
-        tol_degeneracy,
-        tol,
-        maxiter,
-        n_ep_extra,
-        shift,
-        verbose,
-        dense_fallback,
-        maxdiagonal,
-    )
+Base.@kwdef struct LOBPCG
+    n_target::Int = 1
+    tol_degeneracy::Float64 = 0.0
+    tol::Float64 = 1e-9
+    maxiter::Int = 300
+    n_ep_extra::Int = 4 # Extra eigenpairs to improve convergence rate
+    shift::Float64 = -100
+    verbose::Bool = false
+    dense_fallback::Bool = true
+    maxdiagonal::Int = 400
 end
 
 # LOBPCG truth solve
 function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg::LOBPCG)
     if isnothing(Ψ₀)  # Build initial guess if needed
         Ψ₀ = Matrix(
-            qr(randn(ComplexF64, size(H, 1), lobpcg.n_target + lobpcg.n_ep_extra)).Q
+            qr(randn(ComplexF64, size(H, 1), lobpcg.n_target + lobpcg.n_ep_extra)).Q,
         )
     else
         @assert size(Ψ₀, 1) == size(H, 1) size(Ψ₀)
@@ -118,7 +93,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
         n_conv_check = max(n_target, n_conv_check)
 
         if n_conv_check < size(res.X, 2) &&
-            all(res.residual_norms[1:n_conv_check] .< lobpcg.tol)
+           all(res.residual_norms[1:n_conv_check] .< lobpcg.tol)
             # All relevant eigenpairs are converged
             lobpcg.verbose && println("Converged in $iterations iterations.")
             return (
@@ -133,7 +108,8 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
 
         if n_conv_check + lobpcg.n_ep_extra > size(res.X, 2)
             Ψ₀_extra = randn(
-                ComplexF64, size(Ψ₀, 1), n_conv_check + lobpcg.n_ep_extra - size(res.X, 2)
+                ComplexF64, size(Ψ₀, 1),
+                n_conv_check + lobpcg.n_ep_extra - size(res.X, 2),
             )
             Ψ₀_extra .-= Ψ₀ * (Ψ₀' * Ψ₀_extra)
             Ψ₀_extra = Matrix(qr(Ψ₀_extra).Q)

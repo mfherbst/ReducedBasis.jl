@@ -23,12 +23,12 @@ function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
     # Extract reduced basis
     # TODO: reorder parameters according to singular value ordering?
     snapshots = [U[:, i] for i in 1:(pod.n_truth)]
-    BᵀB       = overlap_matrix(snapshots, snapshots)
+    U_trunc   = @view U[:, 1:(pod.n_truth)]
+    BᵀB       = U_trunc' * U_trunc
     basis     = RBasis(snapshots, parameters, I, BᵀB, BᵀB)
 
     # Hamiltonian compressions
     h_cache = HamiltonianCache(H, basis)
 
-    info = (; basis, h_cache, U, Σ, V, Σ_norm=(Σ / Σ[1])[1:(pod.n_truth)])
-    return basis, h_cache.h, info
+    return basis, h_cache, (; U, Σ, V)
 end

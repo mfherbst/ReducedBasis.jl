@@ -1,36 +1,36 @@
 # Represents an affine decomposition O = ∑_i α_i(μ) M_i
-struct AffineDecomposition{D,M,F<:Function}
-    terms::Array{M,D}
-    # Coefficient function mapping μᵢ → (αᵣ(μᵢ)) to array of size(terms)
-    coefficient_map::F
+struct AffineDecomposition{T<:AbstractArray,F<:Function}
+    terms::T
+    coefficient_map::F  # Coefficient mapping μᵢ → (αᵣ(μᵢ)) to array of size(terms)
+end
+function AffineDecomposition(terms::AbstractArray, coefficient_map::Function)
+    @assert all(s -> s == size(terms[1]), size.(terms)) "Affine terms have different dimensions."
+    AffineDecomposition{typeof(terms),typeof(coefficient_map)}(terms, coefficient_map)
 end
 
 n_terms(ad::AffineDecomposition) = length(ad.terms)
-function Base.size(ad::AffineDecomposition, args...)
-    @assert all(s -> s == size(ad.terms[1]), size.(ad.terms)) "Affine terms have different dimensions."
-    return size(ad.terms[1], args...)
-end
+Base.length(ad::AffineDecomposition) = length(ad.terms)
+Base.size(ad::AffineDecomposition, args...) = size(ad.terms[1], args...)
 
 # Construction of explicit operator at parameter point
 (ad::AffineDecomposition)(μ) = sum(ad.coefficient_map(μ) .* ad.terms)
-function (ad::AffineDecomposition{D,M,F})(μ) where {D,M<:ApproxMPO,F<:Function}
-    θ     = ad.coefficient_map(μ)
-    opsum = +([θ[q] * term.opsum for (q, term) in enumerate(ad.terms)]...)
-    return MPO(opsum, last.(siteinds(ad.terms[1].mpo)))
-end
 
 # Returns compressed/reduced observable
 function compress(ad::AffineDecomposition, basis::RBasis)
-    return AffineDecomposition(
-        [compress(term, basis) for term in ad.terms], ad.coefficient_map
-    )
+    AffineDecomposition(compress.(ad.terms, Ref(basis)), ad.coefficient_map)
 end
+
 # Vector-type specific compression methods
-function compress(m::AbstractMatrix, basis::RBasis)
-    B = hcat(basis.snapshots...) * basis.vectors
-    return B' * m * B
-end
-function compress(mpo::ApproxMPO, basis::RBasis{T,P,MPS,N}) where {T,P,N}
-    matel = overlap_matrix(basis.snapshots, map(Ψ -> mpo * Ψ, basis.snapshots))
-    return basis.vectors' * matel * basis.vectors
+function compress(M::AbstractMatrix, basis::RBasis)
+    # B = hcat(basis.snapshots...) * basis.vectors
+    # B' * M * B
+    m1 = Matrix{eltype(M)}(undef, size(M, 1), dimension(basis))
+    for i in 1:dimension(basis)
+        m1[:, i] .= M * basis.snapshots[i]
+    end
+    m2 = Matrix{eltype(M)}(undef, dimension(basis), dimension(basis))
+    for j = 1:dimension(basis)
+        m2[j, :] .= dropdims(basis.snapshots[j]' * m1; dims=1)
+    end
+    basis.vectors' * m2 * basis.vectors
 end
