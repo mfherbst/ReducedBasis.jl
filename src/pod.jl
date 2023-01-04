@@ -1,8 +1,7 @@
 # Proper orthogonal decomposition as reference method
-struct POD
-    n_truth::Int
+Base.@kwdef struct POD
+    n_truth::Int = 64
 end
-POD(; n_truth=64) = POD(n_truth)
 
 function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
     @assert pod.n_truth ≤ length(grid) && pod.n_truth ≤ size(H, 1)
@@ -30,5 +29,5 @@ function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
     # Hamiltonian compressions
     h_cache = HamiltonianCache(H, basis)
 
-    return basis, h_cache, (; U, Σ, V)
+    basis, h_cache, (; U, Σ, V)
 end

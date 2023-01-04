@@ -1,6 +1,5 @@
 using LinearAlgebra
 using SparseArrays
-using ProgressMeter
 using ITensors
 using Plots
 using ReducedBasis
@@ -26,35 +25,30 @@ function to_global(L::Int, op::M, i::Int) where {M<:AbstractMatrix}
 end
 
 function xxz_chain(L)
-    H1 =
-        0.25 * sum([
-            to_global(L, σx, i) * to_global(L, σx, i + 1) +
-            to_global(L, σy, i) * to_global(L, σy, i + 1) for i in 1:(L - 1)
-        ])
-    H2 = 0.25 * sum([to_global(L, σz, i) * to_global(L, σz, i + 1) for i in 1:(L - 1)])
-    H3 = 0.5 * sum([to_global(L, σz, i) for i in 1:L])
+    H1 = 0.25 * sum([to_global(L, σx, i) * to_global(L, σx, i + 1) +
+                     to_global(L, σy, i) * to_global(L, σy, i + 1) for i in 1:(L-1)])
+    H2 = 0.25 * sum([to_global(L, σz, i) * to_global(L, σz, i + 1) for i in 1:(L-1)])
+    H3 = 0.5  * sum([to_global(L, σz, i) for i in 1:L])
     coefficient_map = μ -> [1.0, μ[1], -μ[2]]
-    return AffineDecomposition([H1, H2, H3], coefficient_map)
+    AffineDecomposition([H1, H2, H3], coefficient_map)
 end
 function xxz_chain(sites::IndexSet; kwargs...)
-    @assert all(hastags.(sites, "S=1/2")) "Site type must be S=1/2"
+    !all(hastags.(sites, "S=1/2")) && error("Site type must be S=1/2")
     xy_term   = OpSum()
     zz_term   = OpSum()
     magn_term = OpSum()
     for i in 1:(length(sites) - 1)
         xy_term   += 0.5, "S+", i, "S-", i + 1
         xy_term   += 0.5, "S-", i, "S+", i + 1
-        zz_term   += "Sz", i, "Sz", i + 1
-        magn_term += "Sz", i
+        zz_term   +=      "Sz", i, "Sz", i + 1
+        magn_term +=      "Sz", i
     end
-    magn_term += "Sz", length(sites) # Add last magnetization term
+    magn_term += "Sz", length(sites)  # Add last magnetization term
     coefficient_map = μ -> [1.0, μ[1], -μ[2]]
-    return AffineDecomposition(
-        [
-            ApproxMPO(MPO(xy_term, sites), xy_term; kwargs...),
-            ApproxMPO(MPO(zz_term, sites), zz_term; kwargs...),
-            ApproxMPO(MPO(magn_term, sites), magn_term; kwargs...),
-        ],
+    AffineDecomposition(
+        [ApproxMPO(MPO(xy_term, sites), xy_term; kwargs...),
+         ApproxMPO(MPO(zz_term, sites), zz_term; kwargs...),
+         ApproxMPO(MPO(magn_term, sites), magn_term; kwargs...)],
         coefficient_map,
     )
 end
@@ -70,19 +64,19 @@ greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=t
 pod    = POD(; n_truth=64)
 
 # Truth solvers (degeneracy: m = L + 1 at (Δ, h/J) = (-1, 0))
-fulldiag = FullDiagonalization(; n_target=L + 1, tol_degeneracy=1e-4)
-lobpcg = LOBPCG(; n_target=L + 1, tol_degeneracy=1e-4, tol=1e-9)
+fulldiag = FullDiagonalization(; n_target=L+1, tol_degeneracy=1e-4)
+lobpcg = LOBPCG(; n_target=L+1, tol_degeneracy=1e-4, tol=1e-9)
 dm = DMRG(;
-    n_target=L + 1,
+    n_target=L+1,
     tol_degeneracy=1e-4,
     sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000),
-    observer=() -> default_observer(; energy_tol=1e-9),
+    observer=() -> DMRGObserver(; energy_tol=1e-9),
 )
 
 # Algorithms for orthogonalization and mode compression
 qrcomp = QRCompress(; tol=1e-10)
 edcomp = EigenDecomposition(; cutoff=1e-7)
-nocomp = nothing
+nocomp = NoCompress()
 
 # Training grid
 Δ  = range(-1.0, 2.5, 40)
@@ -92,20 +86,15 @@ grid_train = RegularGrid(Δ, hJ);
 # Offline phase (RB assembly)
 dfbuilder = DFBuilder()
 basis, h, info = assemble(
-    # H_matrix, grid_train, greedy, fulldiag, qrcomp; callback=dfbuilder ∘ print_callback
-    H_mpo,
-    grid_train,
-    greedy,
-    dm,
-    edcomp;
-    callback=dfbuilder ∘ print_callback,
+    # H_matrix, grid_train, greedy, lobpcg, qrcomp; callback=dfbuilder ∘ print_callback
+    H_mpo, grid_train, greedy, dm, edcomp; callback=dfbuilder ∘ print_callback,
 )
 # basis, h, info = assemble(H_matrix, grid_train, pod, lobpcg)
 diagnostics = dfbuilder.df;
 
 # Offline phase (observable compression)
-M = AffineDecomposition([H_matrix.terms[3]], μ -> [2 / L])
-# M = AffineDecomposition([H_mpo.terms[3]], μ -> [2 / L])
+# M = AffineDecomposition([H_matrix.terms[3]], μ -> [2 / L])
+M = AffineDecomposition([H_mpo.terms[3]], μ -> [2 / L])
 m = compress(M, basis);
 
 # Online phase
@@ -115,7 +104,7 @@ grid_online = RegularGrid(Δ_online, hJ_online)
 
 magnetization = Matrix{Float64}(undef, size(grid_online))
 m_reduced = m([1])  # Save observable, since coefficients do not depend on μ 
-@showprogress for (idx, μ) in pairs(grid_online)
+for (idx, μ) in pairs(grid_online)
     λ_rb, φ_rb = solve(h, basis.metric, μ, fulldiag)
     magnetization[idx] = sum(eachcol(φ_rb)) do φ
         abs(dot(φ, m_reduced, φ)) / size(φ_rb, 2)  # Divide by multiplicity

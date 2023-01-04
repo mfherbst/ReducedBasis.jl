@@ -4,7 +4,9 @@ struct AffineDecomposition{T<:AbstractArray,F<:Function}
     coefficient_map::F  # Coefficient mapping μᵢ → (αᵣ(μᵢ)) to array of size(terms)
 end
 function AffineDecomposition(terms::AbstractArray, coefficient_map::Function)
-    @assert all(s -> s == size(terms[1]), size.(terms)) "Affine terms have different dimensions."
+    if !all(s -> s == size(terms[1]), size.(terms))
+        error("affine terms have different dimensions")
+    end
     AffineDecomposition{typeof(terms),typeof(coefficient_map)}(terms, coefficient_map)
 end
 
@@ -22,15 +24,16 @@ end
 
 # Vector-type specific compression methods
 function compress(M::AbstractMatrix, basis::RBasis)
-    # B = hcat(basis.snapshots...) * basis.vectors
-    # B' * M * B
-    m1 = Matrix{eltype(M)}(undef, size(M, 1), dimension(basis))
-    for i in 1:dimension(basis)
-        m1[:, i] .= M * basis.snapshots[i]
-    end
-    m2 = Matrix{eltype(M)}(undef, dimension(basis), dimension(basis))
-    for j = 1:dimension(basis)
-        m2[j, :] .= dropdims(basis.snapshots[j]' * m1; dims=1)
-    end
-    basis.vectors' * m2 * basis.vectors
+    B = hcat(basis.snapshots...) * basis.vectors
+    B' * M * B
+    # TODO: which type to use here? -> problems with LOBPCG and Float64(...complex...)
+    # m1 = Matrix{eltype(M)}(undef, size(M, 1), dimension(basis))
+    # for i in 1:dimension(basis)
+    #     m1[:, i] .= M * basis.snapshots[i]
+    # end
+    # m2 = Matrix{eltype(M)}(undef, dimension(basis), dimension(basis))
+    # for j = 1:dimension(basis)
+    #     m2[j, :] .= dropdims(basis.snapshots[j]' * m1; dims=1)
+    # end
+    # basis.vectors' * m2 * basis.vectors
 end

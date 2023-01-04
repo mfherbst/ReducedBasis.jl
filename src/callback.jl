@@ -34,17 +34,16 @@ function DFBuilder()
             "metric_norm" => Float64[],
             "time"        => String[],
             "parameter"   => SVector[],
-        ),
+        )
     )
 end
 
 function (builder::DFBuilder)(info)
     if info.state == :iterate
-        # push standard data into DataFrame
-        push!(
+        push!( # Push standard data into DataFrame
             builder.df,
             (iteration=info.iteration, max_error=info.err_max,
-                metric_norm=info.metric_norm, time=info.iter_time, parameter=info.μ),
+             metric_norm=info.metric_norm, time=info.iter_time, parameter=info.μ),
         )
     end
     merge(info, (; builder)) # Insert DFBuilder into info and return

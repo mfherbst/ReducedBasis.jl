@@ -1,36 +1,35 @@
 abstract type ErrorEstimate end
 struct Residual <: ErrorEstimate end
 
-function estimate_error(::Residual, μ, h²::AffineDecomposition, b, λ_rb, φ_rb)
-    h²_sum         = h²(μ)
-    sum_of_squares = sum(zip(λ_rb, eachcol(φ_rb))) do (λ, φ)
-        abs(φ' * h²_sum * φ - λ^2 * φ' * b * φ)
+function estimate_error(::Residual, μ, h_cache::HamiltonianCache, basis::RBasis, sol_rb)
+    h²_sum = h_cache.h²(μ)
+    sum_of_squares = sum(zip(sol_rb.values, eachcol(sol_rb.vectors))) do (λ, φ)
+        abs(φ' * h²_sum * φ - λ^2 * φ' * basis.metric * φ)
     end
-    return sqrt(sum_of_squares)
+    sqrt(sum_of_squares)
 end
 
-struct Greedy
+Base.@kwdef struct Greedy
     estimator::ErrorEstimate
-    tol::Float64
-    n_truth_max::Int
-    init_from_rb::Bool
-end
-function Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=true)
-    return Greedy(estimator, tol, n_truth_max, init_from_rb)
+    tol::Float64 = 1e-3
+    n_truth_max::Int = 64
+    init_from_rb::Bool = true
 end
 
 # Reconstruct ground state from RB eigenvector
 function estimate_gs(
-    basis::RBasis, h::AffineDecomposition, μ, _, solver_online
+    basis::RBasis, h::AffineDecomposition, μ, _, solver_online,
 )  # TODO: How to deal with redundant argument in this case?
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
-    φ_trans = basis.vectors * φ_rb
-    Φ_rb = Matrix{eltype(φ_trans)}(undef, length(basis.snapshots[1], size(φ_rb, 2)))
-    for i in eachindex(basis.snapshots)
-        Φ_rb[:, i] .= basis.snapshots[i] * φ_trans
-    end
-    Φ_rb
-    # return hcat(basis.snapshots...) * basis.vectors * φ_rb
+    hcat(basis.snapshots...) * basis.vectors * φ_rb
+    # φ_trans = basis.vectors * φ_rb
+    # Φ_rb = Matrix{eltype(φ_trans)}(undef, length(basis.snapshots[1]), size(φ_rb, 2))
+    # for j in 1:length(basis.snapshots), k in 1:size(φ_trans, 2)
+    #     for i in 1:length(basis.snapshots)
+    #         Φ_rb[j, k] += basis.snapshots[i][j] * φ_trans[i, k]  # Error with .+= ?
+    #     end
+    # end
+    # Φ_rb
 end
 
 function assemble(
@@ -40,12 +39,11 @@ function assemble(
     solver_truth,
     compressalg;
     solver_online=FullDiagonalization(;
-        tol_degeneracy=solver_truth.tol_degeneracy, n_target=solver_truth.n_target
+        tol_degeneracy=solver_truth.tol_degeneracy, n_target=solver_truth.n_target,
     ),
     callback=print_callback,
 )
-    # TODO: First iteration separate? (to avoid annoying if-statements in for-loop)
-    t_init  = time_ns()
+    t_init  = time_ns()  # TODO: how to outsource this time measurement to callback?
     μ₁      = grid[1]
     truth   = solve(H, μ₁, nothing, solver_truth)
     BᵀB     = overlap_matrix(truth.vectors, truth.vectors)
@@ -60,10 +58,9 @@ function assemble(
         err_grid = similar(grid, Float64)
         λ_grid   = similar(grid, Vector{Float64})
         for (idx, μ) in pairs(grid)
-            λ_grid[idx], φ_rb = solve(h_cache.h, basis.metric, μ, solver_online)
-            err_grid[idx] = estimate_error(
-                greedy.estimator, μ, h_cache.h², basis.metric, λ_grid[idx], φ_rb
-            )
+            sol = solve(h_cache.h, basis.metric, μ, solver_online)
+            λ_grid[idx] = sol.values
+            err_grid[idx] = estimate_error(greedy.estimator, μ, h_cache, basis, sol)
         end
         err_max, idx_max = findmax(err_grid)
         μ_next = grid[idx_max]
@@ -83,46 +80,37 @@ function assemble(
 
         # Append truth vector according to solver method
         d_basis_old = dimension(basis)
-        basis_new, extend_info = extend!(basis, truth.vectors, μ_next, compressalg)
+        # basis_new, extend_info... = extend!(basis, truth.vectors, μ_next, compressalg)
+        basis_new, extend_info... = extend(basis, truth.vectors, μ_next, compressalg)
 
         # Exit: ill-conditioned BᵀB
         metric_condition = cond(basis_new.metric)
         if metric_condition > 1e2 # Global constant for max. condition?
-            @warn "Stopped assembly due to ill-conditioned BᵀB." metric_condition
+            @warn "stopped assembly due to ill-conditioned BᵀB" metric_condition
             break
         end
         # Exit: no vector was appended to basis
         if dimension(basis_new) == d_basis_old
-            @warn "Stopped assembly since new snapshot was insignificant."
+            @warn "stopped assembly since new snapshot was insignificant"
             break
         end
 
         # Update basis with new snapshot/vector/metric and compute reduced terms
         basis   = basis_new
-        h_cache = extend!(h_cache, basis)
+        h_cache = HamiltonianCache(h_cache, basis)
 
         # Update iteration state info
-        info = (;
-            iteration=n,
-            err_grid,
-            λ_grid,
-            err_max,
-            μ=μ_next,
-            extend_info,
-            basis,
-            h_cache,
-            t=t_iterstart,
-            state=:iterate,
-        )
+        info = (; iteration=n, err_grid, λ_grid, err_max, μ=μ_next,
+                extend_info, basis, h_cache, t=t_iterstart, state=:iterate)
         callback(info)
 
         # Exit iteration if residuals drops below tolerance
         if err_max < greedy.tol
-            println("Reached residual target.")
+            println("reached residual target")
             break
         end
     end
 
     callback((; t=t_init, state=:finalize))
-    return basis, h_cache.h, info
+    basis, h_cache.h, info
 end

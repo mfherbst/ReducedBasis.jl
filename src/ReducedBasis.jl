@@ -8,11 +8,11 @@ using Printf
 using ProgressMeter
 
 export RegularGrid
-export bounds, shift, in_bounds
+export bounds, in_bounds, shift
 include("grid.jl")
 
-export RBasis, QRCompress, EigenDecomposition
-export dimension, n_truthsolve, multiplicity, overlap_matrix, extend!
+export RBasis, NoCompress, QRCompress, EigenDecomposition
+export dimension, n_truthsolve, multiplicity, overlap_matrix, extend
 include("rbasis.jl")
 
 export AffineDecomposition

@@ -1,6 +1,7 @@
-using ReducedBasis
 using Test
+using Random
 
-@testset "ReducedBasis.jl" begin
-    # Write your tests here.
-end
+# Initialize seed
+Random.seed!(0)
+
+include("grid.jl")

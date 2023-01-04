@@ -1,6 +1,5 @@
 # Convenience struct for efficient H, H² compression
 # TODO: introduce type parameters?
-# M: matrix-like, e.g. Matrix{ComplexF64}, MPSColumns, etc.
 struct HamiltonianCache{T<:Number,V}
     H::AffineDecomposition
     HΨ::Vector{V}
@@ -22,16 +21,15 @@ function HamiltonianCache(H::AffineDecomposition, basis::RBasis)
         [basis.vectors' * matel * basis.vectors for matel in ΨHHΨ],
         μ -> (H.coefficient_map(μ) * H.coefficient_map(μ)'),
     )
-    return HamiltonianCache(H, HΨ, ΨHΨ, ΨHHΨ, h, h²)
+    HamiltonianCache(H, HΨ, ΨHΨ, ΨHHΨ, h, h²)
 end
-
 # Compute only new HΨ and necessary matrix elements
-function extend!(hc::HamiltonianCache, basis::RBasis{V,T}) where {V,T}
+function HamiltonianCache(hc::HamiltonianCache, basis::RBasis{V,T}) where {V,T}
     d_basis = dimension(basis)
     m = multiplicity(basis)[end]  # Multiplicity of last truth solve
 
     # Compute new Hamiltonian application HΨ
-    for q in eachindex(hc.HΨ)
+    for q in 1:length(hc.HΨ)
         for j in (d_basis - m + 1):d_basis
             push!(hc.HΨ[q], hc.H.terms[q] * basis.snapshots[j])
         end
@@ -70,5 +68,5 @@ function extend!(hc::HamiltonianCache, basis::RBasis{V,T}) where {V,T}
         μ -> (hc.H.coefficient_map(μ) * hc.H.coefficient_map(μ)'),
     )
 
-    return HamiltonianCache(hc.H, hc.HΨ, hc.ΨHΨ, hc.ΨHHΨ, h_new, h²_new)
+    HamiltonianCache(hc.H, hc.HΨ, hc.ΨHΨ, hc.ΨHHΨ, h_new, h²_new)
 end

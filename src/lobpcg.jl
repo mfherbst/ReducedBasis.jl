@@ -12,13 +12,13 @@ prepare_preconditioner(M::AbstractMatrix) = M
 function diagonalify(M::SparseMatrixCSC{Tv,Ti}, maxdiagonal) where {Tv,Ti}
     I, J, V = findnz(M)
     mask = (I .> (J .- maxdiagonal)) .& (I .< (J .+ maxdiagonal))
-    return sparse(I[mask], J[mask], V[mask], size(M)...)
+    sparse(I[mask], J[mask], V[mask], size(M)...)
 end
 
 function preconditioner(M::AbstractMatrix; shift=-0.1, maxdiagonal=4000)
     M_diag = diagonalify(M, maxdiagonal)
     @assert ishermitian(M_diag)
-    return factorize(Hermitian(M_diag + shift * I))
+    factorize(Hermitian(M_diag + shift * I))
 end
 
 """
@@ -141,7 +141,6 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
             vectors=[vec[:, i] for i in 1:n_target],
             values=val[1:n_target] .- lobpcg.shift,
             converged=true,
-            # iterations=0,  # Still return original number of iterations?
             iterations=iterations,
             X=vec,
             λ=val .- lobpcg.shift,

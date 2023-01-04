@@ -17,51 +17,38 @@ function reconstruct(mps::MPS)
 end
 
 # RBasis extension using eigenvalue decomposition for MPS RBasis
-function extend!(basis::RBasis{MPS}, snapshots::Vector{MPS}, μ, ed::EigenDecomposition)
-    @assert all(length.(snapshots) .== length(basis.snapshots[1])) "MPS must have same length as column MPS"
-    append!(basis.snapshots, snapshots)
-    d_basis  = dimension(basis)
-    m        = size(snapshots, 2)
-    overlaps = extend_overlaps(basis.snapshots, basis.snapshot_overlaps, m)
+function extend(basis::RBasis{MPS}, new_snapshot::Vector{MPS}, μ, ed::EigenDecomposition)
+    @assert all(length.(new_snapshot) .== length(basis.snapshots[1])) "MPS must have same length as column MPS"
+    overlaps = extend_overlaps(basis.snapshot_overlaps, basis.snapshots, new_snapshot)
 
     # Orthonormalization via eigenvalue decomposition
-    Λ, U          = eigen(overlaps)
+    Λ, U          = eigen(Hermitian(overlaps))  # Hermitian to automatically sort by smallest λ
     λ_error_trunc = 0.0
     keep          = 1
     if !iszero(ed.cutoff)
-        U = U[:, sortperm(Λ; rev=true)]  # Sort by largest eigenvalue
-        sort!(Λ; rev=true)
-        λ²_psums      = [sum(Λ[i:end] .^ 2) for i in eachindex(Λ)]
-        λ_errors      = @. sqrt(λ²_psums / λ²_psums[1])
-        idx_trunc     = findlast(λ_errors .> ed.cutoff)
-        λ_error_trunc = λ_errors[idx_trunc]
-        keep          = idx_trunc - d_basis + m
-        if iszero(keep)  # Return old basis, if no significant snapshots can be added
-            # Remove new snapshots from MPSColumns (per-reference)
-            splice!(basis.snapshots, (d_basis - m + 1):d_basis)
+        λ²_psums      = reverse(cumsum(Λ.^2))  # Reverse to put largest eigenvector sum first
+        λ²_errors     = @. sqrt(λ²_psums / λ²_psums[1])
+        idx_trunc     = findlast(err -> err > ed.cutoff, λ²_errors)
+        λ_error_trunc = λ²_errors[idx_trunc]
+        keep          = idx_trunc - dimension(basis)
+        if keep ≤ 0  # Return old basis, if no significant snapshots can be added
             return basis, keep, λ_error_trunc, minimum(Λ)
         end
 
-        if idx_trunc != d_basis  # Truncate/compress
+        if keep != length(new_snapshot)  # Truncate/compress
             Λ = Λ[1:idx_trunc]
             U = U[1:idx_trunc, 1:idx_trunc]
-            splice!(basis.snapshots, (idx_trunc + 1):d_basis)
-            overlaps = overlaps_new[1:idx_trunc, 1:idx_trunc]
-            λ_error_trunc = λ_errors[idx_trunc + 1]
+            overlaps = overlaps[1:idx_trunc, 1:idx_trunc]
+            λ_error_trunc = λ²_errors[idx_trunc + 1]
         end
     end
+    append!(basis.snapshots, new_snapshot[1:keep])  # TODO: use ordering of Λ
     append!(basis.parameters, fill(μ, keep))
     vectors_new = U * Diagonal(1 ./ sqrt.(abs.(Λ)))
 
-    return RBasis(
-        basis.snapshots,
-        basis.parameters,
-        vectors_new,
-        overlaps,
-        vectors_new' * overlaps * vectors_new,
-    ),
-    keep, λ_error_trunc,
-    minimum(Λ)
+    RBasis(basis.snapshots, basis.parameters, vectors_new,
+           overlaps, vectors_new' * overlaps * vectors_new),
+    keep, λ_error_trunc, minimum(Λ)
 end
 
 # MPO wrapper struct containing all contraction kwargs
@@ -73,9 +60,7 @@ struct ApproxMPO
     mindim::Int
     truncate::Bool
 end
-function ApproxMPO(
-    mpo::MPO, opsum; cutoff=1e-9, maxdim=1000, mindim=1, truncate=true,
-)
+function ApproxMPO(mpo::MPO, opsum; cutoff=1e-9, maxdim=1000, mindim=1, truncate=true)
     ApproxMPO(mpo, opsum, cutoff, maxdim, mindim, truncate)
 end
 
@@ -107,16 +92,15 @@ Base.@kwdef struct DMRG
 end
 
 function default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)
-    # TODO: optimize default settings
     sweeps = Sweeps(100; cutoff=cutoff_max)
     setnoise!(sweeps, [10.0^n for n in -1:-2:-10]..., 0.1cutoff_max)
     setmaxdim!(sweeps, [10n for n in 1:2:10]..., bonddim_max)
-    return sweeps
+    sweeps
 end
 
 function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm::DMRG)
     if isnothing(Ψ₀)
-        # last.(siteinds(...)) since MPOs have two physical indices per tensor, last for non-primed index
+        # last.(siteinds(...)) for two physical indices per tensor, last for non-primed index
         Ψ₀ = fill(
             randomMPS(last.(siteinds(H.terms[1].mpo)), dm.sweeps.maxdim[1]), dm.n_target,
         )
@@ -153,21 +137,17 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
         end
     end
 
-    return (; values, vectors, variances, iterations)
+    (; values, vectors, variances, iterations)
 end
 
 function estimate_gs(basis::RBasis{MPS}, h::AffineDecomposition, μ, dm::DMRG, solver_online)
-    # TODO: How to avoid long subtyping?
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
-    φ_rb′   = basis.vectors * φ_rb
-    Φ_mps   = MPS[]
-    for col in eachcol(φ_rb′)  # Add MPS and multiply by φ-dependent coefficients
+    φ_trans = basis.vectors * φ_rb
+    map(eachcol(φ_trans)) do col  # Add MPS and multiply by φ coefficients
         mps = col[1] * basis.snapshots[1]
         for k in 2:dimension(basis)
             mps = +(mps, col[k] * basis.snapshots[k]; maxdim=dm.sweeps.maxdim[1])
         end
-        push!(Φ_mps, mps)
+        mps
     end
-
-    return Φ_mps
 end
