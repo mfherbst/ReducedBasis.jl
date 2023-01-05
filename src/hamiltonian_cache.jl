@@ -29,44 +29,47 @@ function HamiltonianCache(hc::HamiltonianCache, basis::RBasis{V,T}) where {V,T}
     m = multiplicity(basis)[end]  # Multiplicity of last truth solve
 
     # Compute new Hamiltonian application HΨ
-    for q in 1:length(hc.HΨ)
+    HΨ = copy(hc.HΨ)  # To make function non-mutating
+    for q in 1:length(HΨ)
         for j in (d_basis - m + 1):d_basis
-            push!(hc.HΨ[q], hc.H.terms[q] * basis.snapshots[j])
+            push!(HΨ[q], hc.H.terms[q] * basis.snapshots[j])
         end
     end
 
     # Compute only new matrix elements
-    for (q, term) in enumerate(hc.ΨHΨ)
+    ΨHΨ = copy(hc.ΨHΨ)
+    for (q, term) in enumerate(ΨHΨ)
         term_new = zeros(T, size(term) .+ m)
         term_new[1:(d_basis - m), 1:(d_basis - m)] = term
         for j in (d_basis - m + 1):d_basis
             for i in 1:j
-                term_new[i, j] = dot(basis.snapshots[i], hc.HΨ[q][j])
+                term_new[i, j] = dot(basis.snapshots[i], HΨ[q][j])
                 term_new[j, i] = term_new[i, j]'
             end
         end
-        hc.ΨHΨ[q] = term_new
+        ΨHΨ[q] = term_new
     end
-    for (idx, term) in pairs(hc.ΨHHΨ)
+    ΨHHΨ = copy(hc.ΨHHΨ)
+    for (idx, term) in pairs(ΨHHΨ)
         term_new = zeros(T, size(term) .+ m)
         term_new[1:(d_basis - m), 1:(d_basis - m)] = term
         for j in (d_basis - m + 1):d_basis
             for i in 1:j
-                term_new[i, j] = dot(hc.HΨ[first(idx.I)][i], hc.HΨ[last(idx.I)][j])
+                term_new[i, j] = dot(HΨ[first(idx.I)][i], HΨ[last(idx.I)][j])
                 term_new[j, i] = term_new[i, j]'
             end
         end
-        hc.ΨHHΨ[idx] = term_new
+        ΨHHΨ[idx] = term_new
     end
 
     # Transform using basis.vectors and creat AffineDecompositions
-    h_new = AffineDecomposition(
-        [basis.vectors' * term * basis.vectors for term in hc.ΨHΨ], hc.H.coefficient_map
+    h = AffineDecomposition(
+        [basis.vectors' * term * basis.vectors for term in ΨHΨ], hc.H.coefficient_map
     )
-    h²_new = AffineDecomposition(
-        [basis.vectors' * term * basis.vectors for term in hc.ΨHHΨ],
+    h² = AffineDecomposition(
+        [basis.vectors' * term * basis.vectors for term in ΨHHΨ],
         μ -> (hc.H.coefficient_map(μ) * hc.H.coefficient_map(μ)'),
     )
 
-    HamiltonianCache(hc.H, hc.HΨ, hc.ΨHΨ, hc.ΨHHΨ, h_new, h²_new)
+    HamiltonianCache(hc.H, HΨ, ΨHΨ, ΨHHΨ, h, h²)
 end

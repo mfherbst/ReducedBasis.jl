@@ -42,11 +42,11 @@ function extend(basis::RBasis{MPS}, new_snapshot::Vector{MPS}, μ, ed::EigenDeco
             λ_error_trunc = λ²_errors[idx_trunc + 1]
         end
     end
-    append!(basis.snapshots, new_snapshot[1:keep])  # TODO: use ordering of Λ
-    append!(basis.parameters, fill(μ, keep))
+    snapshots   = append!(copy(basis.snapshots), new_snapshot[1:keep])  # TODO: use ordering of Λ
+    parameters  = append!(copy(basis.parameters), fill(μ, keep))
     vectors_new = U * Diagonal(1 ./ sqrt.(abs.(Λ)))
 
-    RBasis(basis.snapshots, basis.parameters, vectors_new,
+    RBasis(snapshots, parameters, vectors_new,
            overlaps, vectors_new' * overlaps * vectors_new),
     keep, λ_error_trunc, minimum(Λ)
 end
@@ -69,6 +69,8 @@ function Base.:*(o::ApproxMPO, mps::MPS)
         o.mpo, mps; cutoff=o.cutoff, maxdim=o.maxdim, mindim=o.mindim, truncate=o.truncate,
     )
 end
+Base.length(mpo::ApproxMPO) = length(mpo.mpo)
+Base.size(mpo::ApproxMPO) = size(mpo.mpo)
 
 # AffineDecomposition evaluation with ApproxMPO at parameter point
 function (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)

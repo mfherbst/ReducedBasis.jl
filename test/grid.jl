@@ -1,3 +1,4 @@
+using Test, Random
 using LinearAlgebra: norm
 using ReducedBasis: RegularGrid, bounds, in_bounds, shift
 

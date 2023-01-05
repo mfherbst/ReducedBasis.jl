@@ -2,12 +2,13 @@
 struct AffineDecomposition{T<:AbstractArray,F<:Function}
     terms::T
     coefficient_map::F  # Coefficient mapping μᵢ → (αᵣ(μᵢ)) to array of size(terms)
-end
-function AffineDecomposition(terms::AbstractArray, coefficient_map::Function)
-    if !all(s -> s == size(terms[1]), size.(terms))
-        error("affine terms have different dimensions")
+    function AffineDecomposition(terms::AbstractArray, coefficient_map::Function)
+        if !all(s -> s == size(terms[1]), size.(terms))
+            error("affine terms have different dimensions")
+        else
+            new{typeof(terms),typeof(coefficient_map)}(terms, coefficient_map)
+        end
     end
-    AffineDecomposition{typeof(terms),typeof(coefficient_map)}(terms, coefficient_map)
 end
 
 n_terms(ad::AffineDecomposition) = length(ad.terms)

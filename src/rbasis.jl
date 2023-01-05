@@ -69,11 +69,11 @@ end
 
 # Extension without orthogonalization
 function extend(basis::RBasis, new_snapshot, μ, ::NoCompress)
-    overlaps = extend_overlaps(basis.snapshot_overlaps, basis.snapshots, new_snapshot)
-    append!(basis.snapshots, new_snapshot)
-    append!(basis.parameters, fill(μ, length(new_snapshot)))
+    overlaps   = extend_overlaps(basis.snapshot_overlaps, basis.snapshots, new_snapshot)
+    snapshots  = append!(copy(basis.snapshots), new_snapshot)
+    parameters = append!(copy(basis.parameters), fill(μ, length(new_snapshot)))
 
-    RBasis(basis.snapshots, basis.parameters, I, overlaps, overlaps), length(new_snapshot)
+    RBasis(snapshots, parameters, I, overlaps, overlaps), length(new_snapshot)
 end
 # Extension using QR decomposition for orthogonalization/compression
 function extend(basis::RBasis, new_snapshot, μ, qrcomp::QRCompress)

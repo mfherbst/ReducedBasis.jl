@@ -61,7 +61,7 @@ H_mpo    = xxz_chain(sites; truncate=true, cutoff=1e-9)
 
 # Assembly strategies
 greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=true)
-pod    = POD(; n_truth=64)
+pod    = POD(; n_truth=64, verbose=true)
 
 # Truth solvers (degeneracy: m = L + 1 at (Δ, h/J) = (-1, 0))
 fulldiag = FullDiagonalization(; n_target=L+1, tol_degeneracy=1e-4)
@@ -86,15 +86,16 @@ grid_train = RegularGrid(Δ, hJ);
 # Offline phase (RB assembly)
 dfbuilder = DFBuilder()
 basis, h, info = assemble(
-    # H_matrix, grid_train, greedy, lobpcg, qrcomp; callback=dfbuilder ∘ print_callback
-    H_mpo, grid_train, greedy, dm, edcomp; callback=dfbuilder ∘ print_callback,
+    H_matrix, grid_train, greedy, lobpcg, qrcomp; callback=dfbuilder ∘ print_callback
+    # H_mpo, grid_train, greedy, dm, edcomp; callback=dfbuilder ∘ print_callback,
 )
-# basis, h, info = assemble(H_matrix, grid_train, pod, lobpcg)
+# basis, h_cache, info = assemble(H_matrix, grid_train, pod, lobpcg)
+# h = h_cache.h
 diagnostics = dfbuilder.df;
 
 # Offline phase (observable compression)
-# M = AffineDecomposition([H_matrix.terms[3]], μ -> [2 / L])
-M = AffineDecomposition([H_mpo.terms[3]], μ -> [2 / L])
+M = AffineDecomposition([H_matrix.terms[3]], μ -> [2 / L])
+# M = AffineDecomposition([H_mpo.terms[3]], μ -> [2 / L])
 m = compress(M, basis);
 
 # Online phase
