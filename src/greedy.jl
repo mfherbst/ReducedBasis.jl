@@ -14,6 +14,7 @@ Base.@kwdef struct Greedy
     tol::Float64 = 1e-3
     n_truth_max::Int = 64
     init_from_rb::Bool = true
+    verbose::Bool = true
 end
 
 # Reconstruct ground state from RB eigenvector
@@ -66,7 +67,7 @@ function assemble(
         μ_next = grid[idx_max]
         # Exit: μ_next has already been solved
         if μ_next ∈ basis.parameters
-            @warn "μ=$μ_next has already been solved"
+            greedy.verbose && @warn "μ=$μ_next has already been solved"
             break
         end
 
@@ -85,13 +86,13 @@ function assemble(
 
         # Exit: ill-conditioned BᵀB
         metric_condition = cond(basis_new.metric)
-        if metric_condition > 1e2 # Global constant for max. condition?
-            @warn "stopped assembly due to ill-conditioned BᵀB" metric_condition
+        if metric_condition > 1e2  # TODO: Global constant for max. condition?
+            greedy.verbose && @warn "stopped assembly due to ill-conditioned BᵀB" metric_condition
             break
         end
         # Exit: no vector was appended to basis
         if dimension(basis_new) == d_basis_old
-            @warn "stopped assembly since new snapshot was insignificant"
+            greedy.verbose && @warn "stopped assembly since new snapshot was insignificant"
             break
         end
 
@@ -106,7 +107,7 @@ function assemble(
 
         # Exit iteration if residuals drops below tolerance
         if err_max < greedy.tol
-            println("reached residual target")
+            greedy.verbose && println("reached residual target")
             break
         end
     end

@@ -16,6 +16,11 @@ function reconstruct(mps::MPS)
     reshape(vec, length(vec))
 end
 
+# Compression/orthonormalization via eigenvalue decomposition (as in POD)
+Base.@kwdef struct EigenDecomposition
+    cutoff::Float64 = 1e-6
+end
+
 # RBasis extension using eigenvalue decomposition for MPS RBasis
 function extend(basis::RBasis{MPS}, new_snapshot::Vector{MPS}, μ, ed::EigenDecomposition)
     @assert all(length.(new_snapshot) .== length(basis.snapshots[1])) "MPS must have same length as column MPS"
@@ -52,16 +57,29 @@ function extend(basis::RBasis{MPS}, new_snapshot::Vector{MPS}, μ, ed::EigenDeco
 end
 
 # MPO wrapper struct containing all contraction kwargs
-struct ApproxMPO
+"""
+Carries an `ITensors.MPO` matrix-product operator and possible truncation keyword arguments.
+This enables a simple `mpo * mps` syntax while allowing for proper truncation throughout
+the basis assembly.
+
+Includes the exact operator sum in `opsum` to be able to produce efficient sums of MPOs
+when constructing [`AffineDecomposition`](@ref) sums explicitly.
+
+# Arguments
+- `mpo::MPO`
+- `opsum::Sum{Scaled{ComplexF64,Prod{Op}}}`
+- `cutoff::Float64=1e-9`: relative cutoff for singular values.
+- `maxdim::Int=1000`: maximal bond dimension.
+- `mindim::Int=1`: minimal bond dimension.
+- `truncate::Bool=true`: disables all truncate if set to `false`.
+"""
+Base.@kwdef struct ApproxMPO
     mpo::MPO
-    opsum::Sum{Scaled{ComplexF64,Prod{Op}}}  # exact operator sum
-    cutoff::Float64
-    maxdim::Int
-    mindim::Int
-    truncate::Bool
-end
-function ApproxMPO(mpo::MPO, opsum; cutoff=1e-9, maxdim=1000, mindim=1, truncate=true)
-    ApproxMPO(mpo, opsum, cutoff, maxdim, mindim, truncate)
+    opsum::Sum{Scaled{ComplexF64,Prod{Op}}}
+    cutoff::Float64=1e-9
+    maxdim::Int=1000
+    mindim::Int=1
+    truncate::Bool=true
 end
 
 function Base.:*(o::ApproxMPO, mps::MPS)
@@ -84,7 +102,18 @@ function compress(mpo::ApproxMPO, basis::RBasis{MPS})
     basis.vectors' * matel * basis.vectors
 end
 
-# DMRG truth solver
+"""
+Solver type for the density matrix renormalization group (DMRG) as implemented
+in [`ITensors`](https://itensor.github.io/ITensors.jl/stable/DMRG.html).
+
+# Arguments
+
+- `n_target::Int=1`: see [`FullDiagonalization`](@ref)
+- `tol_degeneracy::Float64=0.0`: see [`FullDiagonalization`](@ref)
+- `sweeps::Sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)`: set DMRG sweep settings via `ITensors.Sweeps`.
+- `observer::Function=() -> DMRGObserver(; energy_tol=1e-9)`: set DMRG exit conditions. At each solve a new `AbstractObserver` object is created.
+- `verbose::Bool=false`: if `true`, prints info about DMRG solve.
+"""
 Base.@kwdef struct DMRG
     n_target::Int = 1
     tol_degeneracy::Float64 = 0.0

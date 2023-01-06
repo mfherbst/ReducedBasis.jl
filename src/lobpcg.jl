@@ -21,23 +21,24 @@ function preconditioner(M::AbstractMatrix; shift=-0.1, maxdiagonal=4000)
     factorize(Hermitian(M_diag + shift * I))
 end
 
-"""
-Diagonalize `A` using LOBPCG starting from initial guess `X0`.
-
-Supported kwargs
-----------------
- - maxiter
- - prec
- - tol
- - largest
- - n_conv_check
- - miniter
- - ortho_tol
- - display_progress
-"""
+# See: https://github.com/JuliaMolSim/DFTK.jl/blob/master/src/eigen/diag_lobpcg_hyper.jl
 diag_lobpcg(A, X0; kwargs...) = lobpcg_hyper(A, X0; kwargs...)
 
-# LOBPCG parameter struct
+"""
+Solver type for Locally Optimal Block Preconditioned Conjugate Gradient (LOBPCG).
+Currently uses the DFTK [`lobpcg_hyper`](https://github.com/JuliaMolSim/DFTK.jl/blob/master/src/eigen/diag_lobpcg_hyper.jl) implementation.
+
+# Arguments
+- `n_target::Int=1`
+- `tol_degeneracy::Float64=0.0`
+- `tol::Float64=1e-9`
+- `maxiter::Int=300`
+- `n_ep_extra::Int=4`
+- `shift::Float64=-100`
+- `verbose::Bool=false`
+- `dense_fallback::Bool=true`
+- `maxdiagonal::Int=400`
+"""
 Base.@kwdef struct LOBPCG
     n_target::Int = 1
     tol_degeneracy::Float64 = 0.0

@@ -1,7 +1,21 @@
-# Represents an affine decomposition O = ∑_i α_i(μ) M_i
+
+"""
+Represents an affine decomposition
+
+```math
+O(\\mathbf{\\mu}) = \\sum_{r=1}^R \\alpha_r(\\mathbf{\\mu})\\, O_r
+```
+
+where `terms<:AbstractArray` carries the ``O_r`` matrices (or more generally linear maps)
+and the `coefficient_map<:Function` implements the ``\\alpha_r(\\mathbf{\\mu})``
+coefficient functions.
+
+Note that ``r = (r_1, \\dots, r_d)`` generally is a multi-index and as such `terms`
+can be a ``d``-dimensional array. Correspondingly, `coefficient_map` maps parameter points ``\\mathbf{\\mu}`` to an `size(terms)` array.
+"""
 struct AffineDecomposition{T<:AbstractArray,F<:Function}
     terms::T
-    coefficient_map::F  # Coefficient mapping μᵢ → (αᵣ(μᵢ)) to array of size(terms)
+    coefficient_map::F
     function AffineDecomposition(terms::AbstractArray, coefficient_map::Function)
         if !all(s -> s == size(terms[1]), size.(terms))
             error("affine terms have different dimensions")
@@ -11,9 +25,9 @@ struct AffineDecomposition{T<:AbstractArray,F<:Function}
     end
 end
 
-n_terms(ad::AffineDecomposition) = length(ad.terms)
-Base.length(ad::AffineDecomposition) = length(ad.terms)
+Base.length(ad::AffineDecomposition) = length(ad.terms[1])
 Base.size(ad::AffineDecomposition, args...) = size(ad.terms[1], args...)
+n_terms(ad::AffineDecomposition) = length(ad.terms)
 
 # Construction of explicit operator at parameter point
 (ad::AffineDecomposition)(μ) = sum(ad.coefficient_map(μ) .* ad.terms)

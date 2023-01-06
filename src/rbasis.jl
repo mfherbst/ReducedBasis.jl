@@ -62,11 +62,6 @@ Base.@kwdef struct QRCompress
     tol::Float64 = 1e-10
 end
 
-# Compression/orthonormalization via eigenvalue decomposition (as in POD)
-Base.@kwdef struct EigenDecomposition
-    cutoff::Float64 = 1e-6
-end
-
 # Extension without orthogonalization
 function extend(basis::RBasis, new_snapshot, μ, ::NoCompress)
     overlaps   = extend_overlaps(basis.snapshot_overlaps, basis.snapshots, new_snapshot)

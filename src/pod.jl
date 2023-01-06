@@ -24,15 +24,14 @@ function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
     # SVD to obtain orthogonal basis
     U, Σ, V = svd(hcat(vectors...))
 
-    # Extract reduced basis
+    # Extract reduced basis with desired number of truth solves
+    mult      = [count(isequal(μ), parameters) for μ in unique(parameters)]
+    idx_trunc = sum(@view(mult[1:(pod.n_truth)])) 
     # TODO: reorder parameters according to singular value ordering?
-    snapshots = [U[:, i] for i in 1:(pod.n_truth)]
-    U_trunc   = @view U[:, 1:(pod.n_truth)]
+    snapshots = [U[:, i] for i in 1:idx_trunc]
+    U_trunc   = @view U[:, 1:idx_trunc]
     BᵀB       = U_trunc' * U_trunc
-    basis     = RBasis(snapshots, parameters, I, BᵀB, BᵀB)
+    basis     = RBasis(snapshots, parameters[1:idx_trunc], I, BᵀB, BᵀB)
 
-    # Hamiltonian compressions
-    h_cache = HamiltonianCache(H, basis)
-
-    basis, h_cache, (; U, Σ, V)
+    basis, (; U, Σ, V)
 end

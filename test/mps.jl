@@ -1,7 +1,7 @@
 using Test, ITensors
 using ReducedBasis
 
-@testset "Offline and online phase for XXZ chain using MPS" begin
+@testset "MPS offline & online phase: XXZ chain" begin
     function xxz_chain(sts::IndexSet; kwargs...)
         xy_term   = OpSum()
         zz_term   = OpSum()
@@ -30,8 +30,8 @@ using ReducedBasis
     Δ_off    = range(-1.0, 2.5, 40)
     hJ_off   = range(0.0, 3.5, 40)
     grid_off = RegularGrid(Δ_off, hJ_off);
-    Δ_on     = range(first(Δ_off), last(Δ_off), 150)
-    hJ_on    = range(first(hJ_off), last(hJ_off), 150)
+    Δ_on     = range(first(Δ_off), last(Δ_off), 100)
+    hJ_on    = range(first(hJ_off), last(hJ_off), 100)
     grid_on  = RegularGrid(Δ_on, hJ_on)
 
     edcomp = EigenDecomposition(; cutoff=1e-7)
@@ -49,44 +49,53 @@ using ReducedBasis
     )
 
     # Check values of L/2+1 magnetization plateaus for L=6
-    function test_L6_magn_plateaus(basis::RBasis, h::AffineDecomposition)
+    function test_L6_magn_plateaus(basis::RBasis, h::AffineDecomposition, solver_truth)
+        fd = FullDiagonalization(;
+            tol_degeneracy=solver_truth.tol_degeneracy, n_target=solver_truth.n_target
+        )
         m = compress(M, basis)
         m_reduced = m([1])
         magnetization = Matrix{Float64}(undef, size(grid_on))
         for (idx, μ) in pairs(grid_on)
-            _, φ_rb = solve(h, basis.metric, μ, fulldiag)
+            _, φ_rb = solve(h, basis.metric, μ, fd)
             magnetization[idx] = sum(eachcol(φ_rb)) do φ
                 abs(dot(φ, m_reduced, φ)) / size(φ_rb, 2)
             end
         end
         
-        @test magnetization[end, 1]  ≈ 0.0 atol=1e-6
-        @test magnetization[1, end]  ≈ 1.0 atol=1e-6
-        @test magnetization[110, 50] ≈ 1//3 atol=1e-6
-        @test magnetization[110, 90] ≈ 2//3 atol=1e-6
+        @test magnetization[end, 1] ≈ 0.0  atol=1e-6
+        @test magnetization[1, end] ≈ 1.0  atol=1e-6
+        @test magnetization[75, 35] ≈ 1//3 atol=1e-6
+        @test magnetization[75, 60] ≈ 2//3 atol=1e-6
     end
     
     @testset "Initial guess from RB eigenvector" begin
-        greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=true)
+        greedy = Greedy(;
+            estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=true, verbose=false
+        )
         @testset "Greedy assembly: degenerate" begin
             basis, h, info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=x -> x)
-            test_L6_magn_plateaus(basis, h)
+            @test multiplicity(basis)[1] > 1
+            test_L6_magn_plateaus(basis, h, dm_deg)
         end
         @testset "Greedy assembly: non-degenerate" begin
             basis, h, info = assemble(H, grid_off, greedy, dm_nondeg, edcomp; callback=x -> x)
-            test_L6_magn_plateaus(basis, h)
+            test_L6_magn_plateaus(basis, h, dm_nondeg)
         end
     end
 
     @testset "Random initial guess" begin
-        greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=false)
+        greedy = Greedy(;
+            estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=false, verbose=false
+        )
         @testset "Greedy assembly: degenerate" begin
             basis, h, info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=x -> x)
-            test_L6_magn_plateaus(basis, h)
+            @test multiplicity(basis)[1] > 1
+            test_L6_magn_plateaus(basis, h, dm_deg)
         end
         @testset "Greedy assembly: non-degenerate" begin
             basis, h, info = assemble(H, grid_off, greedy, dm_nondeg, edcomp; callback=x -> x)
-            test_L6_magn_plateaus(basis, h)
+            test_L6_magn_plateaus(basis, h, dm_nondeg)
         end
     end
 end

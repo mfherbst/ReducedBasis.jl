@@ -89,7 +89,8 @@ basis, h, info = assemble(
     H_matrix, grid_train, greedy, lobpcg, qrcomp; callback=dfbuilder ∘ print_callback
     # H_mpo, grid_train, greedy, dm, edcomp; callback=dfbuilder ∘ print_callback,
 )
-# basis, h_cache, info = assemble(H_matrix, grid_train, pod, lobpcg)
+# basis, info = assemble(H_matrix, grid_train, pod, lobpcg)
+# h_cache = HamiltonianCache(H, basis)
 # h = h_cache.h
 diagnostics = dfbuilder.df;
 
@@ -134,3 +135,12 @@ scatter!(
     ms=3.0,
     msw=2.0,
 )
+
+##
+r = rand(4, 4)
+Q = qr(r).Q
+grid = RegularGrid(Δ_off, hJ_off);
+greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=true)
+fulldiag = FullDiagonalization(; n_target=1, tol_degeneracy=0.0)
+qrcomp = QRCompress(; tol=1e-10)
+assemble(H, grid, greedy, fulldiag, qrcomp)

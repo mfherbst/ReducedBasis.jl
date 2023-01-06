@@ -1,3 +1,10 @@
+"""
+Solver type for full diagonalization using [`LinearAlgebra.eigen`](https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/#LinearAlgebra.eigen).
+
+# Arguments
+- `n_target::Int=1`: the number of targeted vectors. If `tol_degeneracy=0`, it determines the number of returned vectors per solve.
+- `tol_degeneracy::Float64=0.0`: tolerance for distinguishing two eigenvalues. If `abs(λ₁ - λ₂) < tol_degeneracy`, the eigenvalues belong to the same degenerate subspace.
+"""
 Base.@kwdef struct FullDiagonalization
     n_target::Int = 1
     tol_degeneracy::Float64 = 0.0
