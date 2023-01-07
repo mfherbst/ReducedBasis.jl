@@ -1,10 +1,24 @@
-# Proper orthogonal decomposition as reference method
+"""
+Proper orthogonal decomposition assembly strategy.
+
+# Fields
+
+- `n_truth::Int=64`: number of included truth solves in the returned basis.
+- 'verbose::Bool=true`: shows the truth solve progress if `true`.
+"""
 Base.@kwdef struct POD
     n_truth::Int = 64
     verbose::Bool = true
 end
 
+"""
+    assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
+
+Assemble basis using [`POD`](@ref). Only ED solvers such as
+[`FullDiagonalization`](@ref) and [`LOBPCG`](@ref) are supported.
+"""
 function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
+    (solver_truth isa DMRG) && ArgumentError("Only ED solvers are supported.")
     @assert pod.n_truth ≤ length(grid) && pod.n_truth ≤ size(H, 1)
 
     # Compute truth solution on all points of the grid

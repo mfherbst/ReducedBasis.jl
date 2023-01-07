@@ -1,6 +1,12 @@
 abstract type ErrorEstimate end
 struct Residual <: ErrorEstimate end
 
+"""
+    estimate_error(::Residual, μ, h_cache::HamiltonianCache, basis::RBasis, sol_rb)
+    
+Estimate error of reduced basis using the residual
+``\\mathrm{Res}(\\mathbf{\\mu}) = \\lVert H(\\mathbf{\\mu}) B \\varphi(\\mathbf{\\mu}) - \\lambda B \\varphi(\\mathbf{\\mu}) \\rVert``.
+"""
 function estimate_error(::Residual, μ, h_cache::HamiltonianCache, basis::RBasis, sol_rb)
     h²_sum = h_cache.h²(μ)
     sum_of_squares = sum(zip(sol_rb.values, eachcol(sol_rb.vectors))) do (λ, φ)
@@ -9,6 +15,17 @@ function estimate_error(::Residual, μ, h_cache::HamiltonianCache, basis::RBasis
     sqrt(sum_of_squares)
 end
 
+"""
+Greedy reduced basis assembling strategy.
+
+# Fields
+
+- `estimator::ErrorEstimate`: error estimate used in greedy condition. See also [`estimate_error`](@ref)
+- `tol::Float64=1e-3`: tolerance for error estimate, below which the assembly is terminated.
+- `n_truth_max::Int=64`: maximal number of truth solves to be taken up in the basis.
+- `init_from_rb::Bool=true`: if `true`, uses initial guesses from RB eigenvectors. See also [`estimate_gs`](@ref).
+- `verbose::Bool=true`: print information during assembly if `true`.
+"""
 Base.@kwdef struct Greedy
     estimator::ErrorEstimate
     tol::Float64 = 1e-3
@@ -17,10 +34,15 @@ Base.@kwdef struct Greedy
     verbose::Bool = true
 end
 
-# Reconstruct ground state from RB eigenvector
-function estimate_gs(
-    basis::RBasis, h::AffineDecomposition, μ, _, solver_online,
-)  # TODO: How to deal with redundant argument in this case?
+"""
+    estimate_gs(basis::RBasis, h::AffineDecomposition, μ, _, solver_online)
+
+Compute Hilbert-space-dimensional ground state vector at parameter point `μ`
+from the reduced basis using
+``\\mathbf{\\Phi}(\\mathbf{\\mu}) = B \\mathbf{\\varphi}(\\mathbf{\\mu})``.
+"""
+function estimate_gs(basis::RBasis, h::AffineDecomposition, μ, _, solver_online)
+    # TODO: How to deal with redundant argument in this case?
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
     hcat(basis.snapshots...) * basis.vectors * φ_rb
     # φ_trans = basis.vectors * φ_rb
@@ -33,6 +55,21 @@ function estimate_gs(
     # Φ_rb
 end
 
+"""
+    assemble(H, grid, greedy, solver_truth, compressalg; <keyword arguments>)
+
+Assemble an `RBasis` using the greedy strategy and any truth solving method.
+
+# Arguments
+
+- `H::AffineDecomposition`: Hamiltonian for which a reduced basis is assembled.
+- `grid`: parameter grid that defines the parameter domain.
+- `greedy::Greedy`: greedy strategy containing assembly parameters. See also [`Greedy`](@ref).
+- `solver_truth`: solving method for obtaining ground state snapshots.
+- `compressalg`: compression method for orthogonalization, etc. See also [`extend`](@ref).
+- `solver_online=FullDiagonalization(; tol_degeneracy=solver_truth.tol_degeneracy, n_target=solver_truth.n_target)`: solving method that is used for the RB generalized eigenvalue problem.
+- `callback=print_callback`: callback function that operates on the iteration state during assembly. It is possible to chain multiple callback functions using `∘`.
+"""
 function assemble(
     H::AffineDecomposition,
     grid,

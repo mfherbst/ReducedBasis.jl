@@ -1,6 +1,14 @@
 using ITensors
 
-# Reconstruct MPS to Hilbert space dimensional vector
+"""
+    reconstruct(mps::MPS)
+
+Explicitly compute Hilbert-space-dimensional vector by reconstructing all MPS coefficients.
+
+!!! warning "Memory restrictions"
+    The number of MPS coefficients grows exponentially with system size,
+    such that the explicit reconstruction is only possible for small systems.
+"""
 function reconstruct(mps::MPS)
     sites  = siteinds(mps)
     vec    = zeros(eltype(mps[1]), Tuple(dim(s) for s in sites))
@@ -16,20 +24,35 @@ function reconstruct(mps::MPS)
     reshape(vec, length(vec))
 end
 
-# Compression/orthonormalization via eigenvalue decomposition (as in POD)
+"""
+Extension type for orthogonalization and compression using eigenvalue decomposition
+of the basis overlap matrix. See also [`extend`](@ref).
+
+# Fields
+- `cutoff::Float64=1e-6`: cutoff for minimal eigenvalue accuracy.
+"""
 Base.@kwdef struct EigenDecomposition
     cutoff::Float64 = 1e-6
 end
 
-# RBasis extension using eigenvalue decomposition for MPS RBasis
+"""
+    extend(basis::RBasis{MPS}, new_snapshot::Vector{MPS}, μ, ed::EigenDecomposition)
+
+Extend the MPS reduced basis by orthonormalizing and compressing via eigenvalue decomposition.
+
+The overlap matrix ``S`` in `basis.snapshot_overlaps` is eigenvalue decomposed
+`S = U^\\dagger \\Lambda U` and orthonormalized by computing the vector coefficients
+`V = U \\Lambda^{-1/2}`. Modes with an relative squared eigenvalue error smaller than
+`ed.cutoff` are dropped.
+"""
 function extend(basis::RBasis{MPS}, new_snapshot::Vector{MPS}, μ, ed::EigenDecomposition)
     @assert all(length.(new_snapshot) .== length(basis.snapshots[1])) "MPS must have same length as column MPS"
     overlaps = extend_overlaps(basis.snapshot_overlaps, basis.snapshots, new_snapshot)
 
     # Orthonormalization via eigenvalue decomposition
-    Λ, U          = eigen(Hermitian(overlaps))  # Hermitian to automatically sort by smallest λ
+    Λ, U = eigen(Hermitian(overlaps))  # Hermitian to automatically sort by smallest λ
     λ_error_trunc = 0.0
-    keep          = 1
+    keep = 1
     if !iszero(ed.cutoff)
         λ²_psums      = reverse(cumsum(Λ.^2))  # Reverse to put largest eigenvector sum first
         λ²_errors     = @. sqrt(λ²_psums / λ²_psums[1])
@@ -65,7 +88,8 @@ the basis assembly.
 Includes the exact operator sum in `opsum` to be able to produce efficient sums of MPOs
 when constructing [`AffineDecomposition`](@ref) sums explicitly.
 
-# Arguments
+# Fields
+
 - `mpo::MPO`
 - `opsum::Sum{Scaled{ComplexF64,Prod{Op}}}`
 - `cutoff::Float64=1e-9`: relative cutoff for singular values.
@@ -90,13 +114,22 @@ end
 Base.length(mpo::ApproxMPO) = length(mpo.mpo)
 Base.size(mpo::ApproxMPO) = size(mpo.mpo)
 
-# AffineDecomposition evaluation with ApproxMPO at parameter point
+"""
+    (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
+
+Compute sum with `ApproxMPO`s using the exact `ITensors` operator sum.
+"""
 function (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
     θ = ad.coefficient_map(μ)
     opsum = sum([c * term.opsum for (c, term) in zip(θ, ad.terms)])
     MPO(opsum, last.(siteinds(ad.terms[1].mpo)))
 end
 
+"""
+    compress(mpo::ApproxMPO, basis::RBasis{MPS})
+
+Compress one term of `ApproxMPO` type.
+"""
 function compress(mpo::ApproxMPO, basis::RBasis{MPS})
     matel = overlap_matrix(basis.snapshots, map(Ψ -> mpo * Ψ, basis.snapshots))
     basis.vectors' * matel * basis.vectors
@@ -106,12 +139,12 @@ end
 Solver type for the density matrix renormalization group (DMRG) as implemented
 in [`ITensors`](https://itensor.github.io/ITensors.jl/stable/DMRG.html).
 
-# Arguments
+# Fields
 
 - `n_target::Int=1`: see [`FullDiagonalization`](@ref)
 - `tol_degeneracy::Float64=0.0`: see [`FullDiagonalization`](@ref)
 - `sweeps::Sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)`: set DMRG sweep settings via `ITensors.Sweeps`.
-- `observer::Function=() -> DMRGObserver(; energy_tol=1e-9)`: set DMRG exit conditions. At each solve a new `AbstractObserver` object is created.
+- `observer::Function=() -> DMRGObserver(; energy_tol=1e-9)`: set DMRG exit conditions. At each solve a new `ITensors.AbstractObserver` object is created.
 - `verbose::Bool=false`: if `true`, prints info about DMRG solve.
 """
 Base.@kwdef struct DMRG
@@ -122,6 +155,11 @@ Base.@kwdef struct DMRG
     verbose::Bool = false
 end
 
+"""
+    default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)
+
+Return default `ITensors.Sweeps` object for DMRG solves, containing decreasing noise and increasing maximal bond dimension ramps.
+"""
 function default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)
     sweeps = Sweeps(100; cutoff=cutoff_max)
     setnoise!(sweeps, [10.0^n for n in -1:-2:-10]..., 0.1cutoff_max)
@@ -129,6 +167,12 @@ function default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)
     sweeps
 end
 
+"""
+    solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm::DMRG)
+
+Solve using [`DMRG`](@ref). When `nothing` is provided as an initial guess,
+`dm.n_target` random MPS are used.
+"""
 function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm::DMRG)
     if isnothing(Ψ₀)
         # last.(siteinds(...)) for two physical indices per tensor, last for non-primed index
@@ -171,6 +215,12 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
     (; values, vectors, variances, iterations)
 end
 
+"""
+    estimate_gs(basis::RBasis{MPS}, h::AffineDecomposition, μ, dm::DMRG, solver_online)
+
+Compute ground state MPS from the reduced basis by MPS addition in
+``| \\Phi(\\mathbf{\\mu}) \\rangle = \\sum_{k=1}^{\\dim B} [V \\varphi(\\mathbf{\\mu_k})]_k\\, | \\Psi(\\mathbf{\\mu_k}) \\rangle``.
+"""
 function estimate_gs(basis::RBasis{MPS}, h::AffineDecomposition, μ, dm::DMRG, solver_online)
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
     φ_trans = basis.vectors * φ_rb

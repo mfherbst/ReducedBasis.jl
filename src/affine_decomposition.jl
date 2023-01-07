@@ -1,4 +1,3 @@
-
 """
 Represents an affine decomposition
 
@@ -29,15 +28,27 @@ Base.length(ad::AffineDecomposition) = length(ad.terms[1])
 Base.size(ad::AffineDecomposition, args...) = size(ad.terms[1], args...)
 n_terms(ad::AffineDecomposition) = length(ad.terms)
 
-# Construction of explicit operator at parameter point
+"""
+    (ad::AffineDecomposition)(μ)
+
+Explicitly construct the affine decomposition sum.
+"""
 (ad::AffineDecomposition)(μ) = sum(ad.coefficient_map(μ) .* ad.terms)
 
-# Returns compressed/reduced observable
+"""
+    compress(ad::AffineDecomposition, basis::RBasis)
+
+Perform the compression of an [`AffineDecomposition`](@ref)
+corresponding to ``o = B^\\dagger O B``.
+"""
 function compress(ad::AffineDecomposition, basis::RBasis)
     AffineDecomposition(compress.(ad.terms, Ref(basis)), ad.coefficient_map)
 end
+"""
+    compress(M::AbstractMatrix, basis::RBasis)
 
-# Vector-type specific compression methods
+Compress one term of an [`AffineDecomposition`](@ref) of `AbstractMatrix` type.
+"""
 function compress(M::AbstractMatrix, basis::RBasis)
     B = hcat(basis.snapshots...) * basis.vectors
     B' * M * B

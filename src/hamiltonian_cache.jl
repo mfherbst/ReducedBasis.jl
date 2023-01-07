@@ -1,5 +1,16 @@
-# Convenience struct for efficient H, H² compression
 # TODO: introduce type parameters?
+"""
+Convenience type storing a Hamiltonian, its applications to vectors and its compressions.
+
+# Fields
+
+- `H::AffineDecomposition`
+- `HΨ::Vector{V}`
+- `ΨHΨ::Vector{Matrix{T}}`
+- `ΨHHΨ::Matrix{Matrix{T}}`
+- `h::AffineDecomposition`
+- `h²::AffineDecomposition`
+"""
 struct HamiltonianCache{T<:Number,V}
     H::AffineDecomposition
     HΨ::Vector{V}
@@ -8,6 +19,12 @@ struct HamiltonianCache{T<:Number,V}
     h::AffineDecomposition
     h²::AffineDecomposition
 end
+"""
+    HamiltonianCache(H::AffineDecomposition, basis::RBasis)
+
+Construct [`HamiltonianCache`](@ref) from a Hamiltonian computing all applications
+and compressions with an reduced basis.
+"""
 function HamiltonianCache(H::AffineDecomposition, basis::RBasis)
     HΨ = [map(Ψ -> term * Ψ, basis.snapshots) for term in H.terms]
     ΨHΨ = [overlap_matrix(basis.snapshots, v) for v in HΨ]
@@ -23,7 +40,12 @@ function HamiltonianCache(H::AffineDecomposition, basis::RBasis)
     )
     HamiltonianCache(H, HΨ, ΨHΨ, ΨHHΨ, h, h²)
 end
-# Compute only new HΨ and necessary matrix elements
+"""
+    HamiltonianCache(hc::HamiltonianCache, basis::RBasis{V,T}) where {V,T}
+
+Construct from previous [`HamiltonianCache`](@ref), only computing necessary
+Hamiltonian applications and inner products.
+"""
 function HamiltonianCache(hc::HamiltonianCache, basis::RBasis{V,T}) where {V,T}
     d_basis = dimension(basis)
     m = multiplicity(basis)[end]  # Multiplicity of last truth solve

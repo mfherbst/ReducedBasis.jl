@@ -28,7 +28,8 @@ diag_lobpcg(A, X0; kwargs...) = lobpcg_hyper(A, X0; kwargs...)
 Solver type for Locally Optimal Block Preconditioned Conjugate Gradient (LOBPCG).
 Currently uses the DFTK [`lobpcg_hyper`](https://github.com/JuliaMolSim/DFTK.jl/blob/master/src/eigen/diag_lobpcg_hyper.jl) implementation.
 
-# Arguments
+# Fields
+
 - `n_target::Int=1`
 - `tol_degeneracy::Float64=0.0`
 - `tol::Float64=1e-9`
@@ -51,7 +52,13 @@ Base.@kwdef struct LOBPCG
     maxdiagonal::Int = 400
 end
 
-# LOBPCG truth solve
+"""
+    solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg::LOBPCG)
+
+Solve using [`LOBPCG`](@ref). If `nothing` is provided as an initial guess,
+an orthogonal random matrix will be used with `lobpcg.n_target + lobpcg.n_ep_extra`
+column vectors.
+"""
 function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg::LOBPCG)
     if isnothing(Ψ₀)  # Build initial guess if needed
         Ψ₀ = Matrix(

@@ -1,5 +1,10 @@
 using DataFrames
 
+"""
+    print_callback(info)
+
+Print diagnostic information in each assembly iterations.
+"""
 function print_callback(info)
     info = merge(info, (; iter_time=TimerOutputs.prettytime(time_ns() - info.t)))
 
@@ -23,6 +28,9 @@ function print_callback(info)
     info
 end
 
+"""
+Carries a `DataFrame` in which assembly information is gathered.
+"""
 struct DFBuilder
     df::DataFrame
 end
@@ -38,6 +46,12 @@ function DFBuilder()
     )
 end
 
+"""
+    (builder::DFBuilder)(info)
+
+Push assembly information into `DataFrame`. Note that the functor can be chained with
+different callback functions using `∘`.
+"""
 function (builder::DFBuilder)(info)
     if info.state == :iterate
         push!( # Push standard data into DataFrame

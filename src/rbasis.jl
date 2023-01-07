@@ -1,28 +1,58 @@
-# V: Snapshot vector-type of Hilbert space dimension
-# T: floating-point type
-# P: type of the parameter vector (e.g. SVector{3, T})
-# N: matrix-type, UniformScaling, ...
+"""
+Central type containing snapshots and associated objects that make a reduced basis.
+
+The snapshot vector can be of a generic type `V` and are stored in an `AbstractVector{V}`.
+The associated parameter points of type `P` are contained in `parameters`.
+Note that for snapshots ``\\mathbf{\\Psi}(\\mathbf{\\mu}) = (\\Psi_1(\\mathbf{\\mu}),\\dots,\\Psi_m(\\mathbf{\\mu}))`` of multiplicity ``m``
+the parameter point ``\\mathbf{\\mu}`` is contained ``m`` times.
+
+Treated as a matrix, the reduced basis ``B = \\Upsilon V`` is made up of the snapshot
+vectors as column vectors in ``\\Upsilon``  and vector coefficients ``V``.
+The latter are stored in `vectors`. 
+In the simple case of ``B = \\Upsilon``, one sets `vectors=I`.
+
+Since the matrix ``B^\\dagger B = V^\\dagger \\Upsilon^\\dagger \\Upsilon V``
+is frequently needed, both the `snapshot_overlaps` ``\\Upsilon^\\dagger \\Upsilon``
+and the `metric` ``B^\\dagger B`` are stored with generic floating-point type `T`.
+"""
 struct RBasis{V,T<:Number,P,N}
-    # Column-wise truth solves yᵢ at certain parameter values μᵢ
     snapshots::AbstractVector{V}
-    # Parameter values μᵢ associated with truth solve yᵢ
-    # Contains μᵢ m times in case of m-fold degeneracy
     parameters::Vector{P}
-    # Coefficients making up the reduced basis vectors as truthsolves * vectors
     vectors::N
-    # Overlaps between snapshot vectors
     snapshot_overlaps::Matrix{T}
-    # Overlaps between basis vectors, equivalent to (V'*Y'*Y*V)
     metric::Matrix{T}
 end
 
+"""
+    dimension(basis::RBasis)
+
+Return the basis dimension ``\\dim B``.
+"""
 dimension(basis::RBasis) = length(basis.snapshots)
+"""
+    n_truthsolve(basis::RBasis)
+
+Return the number of truth solves (snapshots) contained in the basis.
+"""
 n_truthsolve(basis::RBasis) = length(unique(basis.parameters))
+"""
+    multiplicity(basis::RBasis)
+
+Return the multiplicity of each truth solve.
+"""
 function multiplicity(basis::RBasis)
     [count(isequal(μ), basis.parameters) for μ in unique(basis.parameters)]
 end
 
-# Overlap matrix of two vectors of vecotrs: Sᵢⱼ = ⟨Ψᵢ|Ψⱼ⟩
+"""
+    overlap_matrix(v1::Vector, v2::Vector)
+
+Compute the overlap matrix of two sets of vector-like objects `v1` and `v2`.
+
+The computed matrix elements are the dot products `dot(v1[i], v2[j])`.
+Correspondingly, the elements of `v1` and `v2` must support a `LinearAlgebra.dot` method.
+In the case where `v1 = v2`, the Gram matrix is computed.
+"""
 function overlap_matrix(v1::Vector, v2::Vector)
     @assert eltype(v1) == eltype(v2)
     # TODO: Which type for zeros to use here? (defaults to Float64)
@@ -35,7 +65,12 @@ function overlap_matrix(v1::Vector, v2::Vector)
     overlaps
 end
 
-# Compute overlaps of m newest snapshots
+"""
+    extend_overlaps(old_overlaps::Matrix, old_snapshots::Vector, new_snapshot::Vector)
+
+Extend an overlap matrix by one snapshot, where only the necessary dot products
+are computed.
+"""
 function extend_overlaps(old_overlaps::Matrix, old_snapshots::Vector, new_snapshot::Vector)
     d_old = length(old_snapshots)
     m = length(new_snapshot)  # Multiplicity of new snapshot
@@ -54,15 +89,24 @@ function extend_overlaps(old_overlaps::Matrix, old_snapshots::Vector, new_snapsh
     overlaps
 end
 
-# Struct for using no orthogonalization
+"""Extension type for no orthonormalization or compression. See also [`extend`](@ref)."""
 struct NoCompress end
 
-# Compression/orthonormalization algorithm using QR decomposition
+"""
+    QRCompress(; tol::Float64=1e-10)
+
+Extension type for QR orthonormalization and compression. See also [`extend`](@ref).
+"""
 Base.@kwdef struct QRCompress
     tol::Float64 = 1e-10
 end
 
-# Extension without orthogonalization
+"""
+    extend(basis::RBasis, new_snapshot, μ, ::NoCompress)
+
+Extend the reduced basis by one snapshot without any orthogonalization or
+compression procedure.
+"""
 function extend(basis::RBasis, new_snapshot, μ, ::NoCompress)
     overlaps   = extend_overlaps(basis.snapshot_overlaps, basis.snapshots, new_snapshot)
     snapshots  = append!(copy(basis.snapshots), new_snapshot)
@@ -70,7 +114,16 @@ function extend(basis::RBasis, new_snapshot, μ, ::NoCompress)
 
     RBasis(snapshots, parameters, I, overlaps, overlaps), length(new_snapshot)
 end
-# Extension using QR decomposition for orthogonalization/compression
+"""
+    extend(basis::RBasis, new_snapshot, μ, qrcomp::QRCompress)
+
+Extend using QR orthonormalization and compression.
+
+The orthonormalization is performed by QR decomposing the orthogonal projection
+``\\mathbf{\\Psi}(\\mathbf{\\mu}_{n+1}) - B_n^\\dagger [B_n^\\dagger B_n]^{-1} B_n \\mathbf{\\Psi}(\\mathbf{\\mu}_n)``
+and appending ``Q`` to snapshots. Modes that have an ``R`` column maximum falling below
+the `qrcomp.tol` tolerance are dropped.
+"""
 function extend(basis::RBasis, new_snapshot, μ, qrcomp::QRCompress)
     B    = hcat(basis.snapshots...)
     Ψ    = hcat(new_snapshot...)
