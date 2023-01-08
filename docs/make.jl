@@ -19,7 +19,7 @@ makedocs(;
         "Introduction" => "index.md",
         "Examples" => [
             "examples/xxz_ed.md",
-            "examples/haldane_dmrg.md",
+            "examples/xxz_dmrg.md",
         ],
         "API reference" => "api.md"
     ],
