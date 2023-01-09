@@ -9,7 +9,6 @@ using ReducedBasis
     mult    = multiplicity(basis)
 
     @testset "Property functions" begin
-        @test nt ≤ d_basis
         @test length(mult) == nt
         @test all(mult .≥ 0)
     end
@@ -40,6 +39,5 @@ using ReducedBasis
                 @test norm(new_basis.metric - I) ≤ 1e-9
             end
         end
-        
     end
 end

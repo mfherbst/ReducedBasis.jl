@@ -1,4 +1,4 @@
-using Random, LinearAlgebra
+using Random, LinearAlgebra, SparseArrays
 using ReducedBasis
 
 # Initialize seed

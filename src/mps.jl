@@ -41,8 +41,8 @@ end
 Extend the MPS reduced basis by orthonormalizing and compressing via eigenvalue decomposition.
 
 The overlap matrix ``S`` in `basis.snapshot_overlaps` is eigenvalue decomposed
-`S = U^\\dagger \\Lambda U` and orthonormalized by computing the vector coefficients
-`V = U \\Lambda^{-1/2}`. Modes with an relative squared eigenvalue error smaller than
+``S = U^\\dagger \\Lambda U`` and orthonormalized by computing the vector coefficients
+``V = U \\Lambda^{-1/2}``. Modes with an relative squared eigenvalue error smaller than
 `ed.cutoff` are dropped.
 """
 function extend(basis::RBasis{MPS}, new_snapshot::Vector{MPS}, μ, ed::EigenDecomposition)
@@ -79,7 +79,6 @@ function extend(basis::RBasis{MPS}, new_snapshot::Vector{MPS}, μ, ed::EigenDeco
     keep, λ_error_trunc, minimum(Λ)
 end
 
-# MPO wrapper struct containing all contraction kwargs
 """
 Carries an `ITensors.MPO` matrix-product operator and possible truncation keyword arguments.
 This enables a simple `mpo * mps` syntax while allowing for proper truncation throughout
@@ -97,13 +96,16 @@ when constructing [`AffineDecomposition`](@ref) sums explicitly.
 - `mindim::Int=1`: minimal bond dimension.
 - `truncate::Bool=true`: disables all truncate if set to `false`.
 """
-Base.@kwdef struct ApproxMPO
+struct ApproxMPO
     mpo::MPO
     opsum::Sum{Scaled{ComplexF64,Prod{Op}}}
-    cutoff::Float64=1e-9
-    maxdim::Int=1000
-    mindim::Int=1
-    truncate::Bool=true
+    cutoff::Float64
+    maxdim::Int
+    mindim::Int
+    truncate::Bool
+end
+function ApproxMPO(mpo::MPO, opsum; cutoff=1e-9, maxdim=1000, mindim=1, truncate=true)
+    ApproxMPO(mpo, opsum, cutoff, maxdim, mindim, truncate)
 end
 
 function Base.:*(o::ApproxMPO, mps::MPS)
@@ -177,7 +179,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
     if isnothing(Ψ₀)
         # last.(siteinds(...)) for two physical indices per tensor, last for non-primed index
         Ψ₀ = fill(
-            randomMPS(last.(siteinds(H.terms[1].mpo)), dm.sweeps.maxdim[1]), dm.n_target,
+            randomMPS(last.(siteinds(H.terms[1].mpo)); linkdims=dm.sweeps.maxdim[1]), dm.n_target,
         )
     end
     observer        = dm.observer()

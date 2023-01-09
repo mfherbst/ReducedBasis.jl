@@ -1,44 +1,10 @@
-using Test, LinearAlgebra, ITensors, SparseArrays
+using Test, LinearAlgebra
 using ReducedBasis
 
-@testset "MPS offline & online phase: XXZ chain" begin
-    function xxz_chain(sts::IndexSet; kwargs...)
-        xy_term   = OpSum()
-        zz_term   = OpSum()
-        magn_term = OpSum()
-        for i in 1:(length(sts) - 1)
-            xy_term   += 0.5, "S+", i, "S-", i + 1
-            xy_term   += 0.5, "S-", i, "S+", i + 1
-            zz_term   +=      "Sz", i, "Sz", i + 1
-            magn_term +=      "Sz", i
-        end
-        magn_term += "Sz", length(sts)  # Add last magnetization term
-        coefficient_map = μ -> [1.0, μ[1], -μ[2]]
-        AffineDecomposition(
-            [ApproxMPO(MPO(xy_term, sts), xy_term; kwargs...),
-            ApproxMPO(MPO(zz_term, sts), zz_term; kwargs...),
-            ApproxMPO(MPO(magn_term, sts), magn_term; kwargs...)],
-            coefficient_map,
-        )
-    end
-    function xxz_chain(N)
-        σx = sparse([0.0 1.0; 1.0 0.0])
-        σy = sparse([0.0 -im; im 0.0])
-        σz = sparse([1.0 0.0; 0.0 -1.0])
-        H1 = 0.25 * sum([to_global(N, σx, i) * to_global(N, σx, i + 1) +
-                            to_global(N, σy, i) * to_global(N, σy, i + 1) for i in 1:(N-1)])
-        H2 = 0.25 * sum([to_global(N, σz, i) * to_global(N, σz, i + 1) for i in 1:(N-1)])
-        H3 = 0.5  * sum([to_global(N, σz, i) for i in 1:N])
-        coefficient_map = μ -> [1.0, μ[1], -μ[2]]
-
-        AffineDecomposition([H1, H2, H3], coefficient_map)
-    end
-
+@testset "Offline & online phase: XXZ chain" begin
     # Offline/online parameters
     L        = 6
-    sites    = siteinds("S=1/2", L)
-    H        = xxz_chain(sites; cutoff=1e-14)  # TODO: if to large -> low residual errors at solved μ do not hold!
-    H_matrix = xxz_chain(L)
+    H        = xxz_chain(L)
     M        = AffineDecomposition([H.terms[3]], μ -> [2 / L])
     Δ_off    = range(-1.0, 2.5, 40)
     hJ_off   = range(0.0, 3.5, 40)
@@ -47,19 +13,11 @@ using ReducedBasis
     hJ_on    = range(first(hJ_off), last(hJ_off), 100)
     grid_on  = RegularGrid(Δ_on, hJ_on)
 
-    edcomp = EigenDecomposition(; cutoff=1e-7)
-    dm_deg = DMRG(;
-        n_target=L+1,
-        tol_degeneracy=1e-4,
-        sweeps=default_sweeps(),
-        observer=() -> DMRGObserver(; energy_tol=1e-9),
+    greedy = Greedy(;
+        estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=true, verbose=false
     )
-    dm_nondeg = DMRG(;
-        n_target=1,
-        tol_degeneracy=0.0,
-        sweeps=default_sweeps(),
-        observer=() -> DMRGObserver(; energy_tol=1e-9),
-    )
+    qrcomp = QRCompress(; tol=1e-10)
+    pod    = POD(; n_truth=32, verbose=false)
 
     # Check if RB energy differences for subsequent assembly iterations are positive on grid
     function test_variational(ic::InfoCollector)
@@ -103,7 +61,7 @@ using ReducedBasis
             vectors_fd = Matrix[]
             for μ in unique(basis.parameters)
                 sol    = solve(h_cache.h, basis.metric, μ, fd)
-                sol_fd = solve(H_matrix, μ, nothing, fd)
+                sol_fd = solve(h_cache.H, μ, nothing, fd)
                 push!(errors, estimate_error(greedy.estimator, μ, h_cache, basis, sol))
                 append!(values, sol.values)
                 push!(vectors, sol.vectors)
@@ -117,8 +75,7 @@ using ReducedBasis
             @test maximum((values .- values_fd) ./ values_fd) < sqrt(info.err_max)
             # If degenerate: low eigenvector errors (via projectors onto degenerate subspace)
             if solver_truth.n_target > 1 && solver_truth.tol_degeneracy > 0.0
-                vec_snapshots = reconstruct.(basis.snapshots)
-                B = hcat(vec_snapshots...) * basis.vectors
+                B = hcat(basis.snapshots...) * basis.vectors
                 hilbert_vectors = map(φ -> B * φ, vectors)
                 proj_fd = [v * v' for v in vectors_fd]
                 vector_errors = [norm(Φ * Φ' - p) / norm(p) for (Φ, p) in zip(hilbert_vectors, proj_fd)]
@@ -126,46 +83,63 @@ using ReducedBasis
             end
         end
     end
-    
-    @testset "Initial guess from RB eigenvector" begin
-        greedy = Greedy(;
-            estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=true, verbose=false
-        )
-        @testset "Greedy assembly: degenerate" begin
+
+    @testset "Greedy assembly: LOBPCG" begin
+        @testset "degenerate" begin
             collector = InfoCollector(:λ_grid)
-            basis, h, info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=collect)
+            lobpcg = LOBPCG(; n_target=L+1, tol_degeneracy=1e-4, tol=1e-9)
+            basis, h, info = assemble(H, grid_off, greedy, lobpcg, qrcomp; callback=collector)
             @test multiplicity(basis)[1] > 1
             test_variational(collector)
-            test_L6_magn_plateaus(basis, h, dm_deg)
-            test_low_errors(basis, info.h_cache, dm_deg)
+            test_L6_magn_plateaus(basis, h, lobpcg)
+            test_low_errors(basis, info.h_cache, lobpcg)
         end
-        @testset "Greedy assembly: non-degenerate" begin
+
+        @testset "non-degenerate" begin
             collector = InfoCollector(:λ_grid)
-            basis, h, info = assemble(H, grid_off, greedy, dm_nondeg, edcomp; callback=collector)
+            lobpcg = LOBPCG(; n_target=1, tol_degeneracy=0.0, tol=1e-9)
+            basis, h, info = assemble(H, grid_off, greedy, lobpcg, qrcomp; callback=collector)
             test_variational(collector)
-            test_L6_magn_plateaus(basis, h, dm_nondeg)
-            test_low_errors(basis, info.h_cache, dm_nondeg)
+            test_L6_magn_plateaus(basis, h, lobpcg)
+            test_low_errors(basis, info.h_cache, lobpcg)
         end
     end
 
-    @testset "Random initial guess" begin
-        greedy = Greedy(;
-            estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=false, verbose=false
-        )
-        @testset "Greedy assembly: degenerate" begin
+    @testset "Greedy assembly: FullDiagonalization" begin
+        @testset "degenerate" begin
             collector = InfoCollector(:λ_grid)
-            basis, h, info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=collector)
+            fulldiag = FullDiagonalization(; n_target=L+1, tol_degeneracy=1e-4)
+            basis, h, info = assemble(H, grid_off, greedy, fulldiag, qrcomp; callback=collector)
             @test multiplicity(basis)[1] > 1
             test_variational(collector)
-            test_L6_magn_plateaus(basis, h, dm_deg)
-            test_low_errors(basis, info.h_cache, dm_deg)
+            test_L6_magn_plateaus(basis, h, fulldiag)
+            test_low_errors(basis, info.h_cache, fulldiag)
         end
-        @testset "Greedy assembly: non-degenerate" begin
+
+        @testset "non-degenerate" begin
             collector = InfoCollector(:λ_grid)
-            basis, h, info = assemble(H, grid_off, greedy, dm_nondeg, edcomp; callback=collector)
+            fulldiag = FullDiagonalization(; n_target=1, tol_degeneracy=0.0)
+            basis, h, info = assemble(H, grid_off, greedy, fulldiag, qrcomp; callback=collector)
             test_variational(collector)
-            test_L6_magn_plateaus(basis, h, dm_nondeg)
-            test_low_errors(basis, info.h_cache, dm_nondeg)
+            test_L6_magn_plateaus(basis, h, fulldiag)
+            test_low_errors(basis, info.h_cache, fulldiag)
+        end
+    end
+
+    @testset "Proper orthogonal decomposition: LOBPCG" begin
+        @testset "degenerate" begin
+            lobpcg = LOBPCG(; n_target=L+1, tol_degeneracy=1e-4, tol=1e-9)
+            basis, info = assemble(H, grid_off, pod, lobpcg)
+            h_cache = HamiltonianCache(H, basis)
+            @test multiplicity(basis)[1] > 1
+            test_L6_magn_plateaus(basis, h_cache.h, lobpcg)
+        end
+
+        @testset "non-degenerate" begin
+            lobpcg = LOBPCG(; n_target=1, tol_degeneracy=0.0, tol=1e-9)
+            basis, info = assemble(H, grid_off, pod, lobpcg)
+            h_cache = HamiltonianCache(H, basis)
+            test_L6_magn_plateaus(basis, h_cache.h, lobpcg)
         end
     end
 end

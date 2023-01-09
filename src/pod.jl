@@ -4,7 +4,7 @@ Proper orthogonal decomposition assembly strategy.
 # Fields
 
 - `n_truth::Int=64`: number of included truth solves in the returned basis.
-- 'verbose::Bool=true`: shows the truth solve progress if `true`.
+- `verbose::Bool=true`: shows the truth solve progress if `true`.
 """
 Base.@kwdef struct POD
     n_truth::Int = 64
@@ -41,11 +41,10 @@ function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
     # Extract reduced basis with desired number of truth solves
     mult      = [count(isequal(μ), parameters) for μ in unique(parameters)]
     idx_trunc = sum(@view(mult[1:(pod.n_truth)])) 
-    # TODO: reorder parameters according to singular value ordering?
     snapshots = [U[:, i] for i in 1:idx_trunc]
     U_trunc   = @view U[:, 1:idx_trunc]
     BᵀB       = U_trunc' * U_trunc
-    basis     = RBasis(snapshots, parameters[1:idx_trunc], I, BᵀB, BᵀB)
+    basis     = RBasis(snapshots, parameters, I, BᵀB, BᵀB)
 
     basis, (; U, Σ, V)
 end

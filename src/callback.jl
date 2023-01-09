@@ -29,36 +29,39 @@ function print_callback(info)
 end
 
 """
-Carries a `DataFrame` in which assembly information is gathered.
+Carries a `Dict` of `Vector`s which contain information from greedy assembly iterations.
 """
-struct DFBuilder
-    df::DataFrame
+struct InfoCollector
+    data::Dict{Symbol,Vector}
 end
-function DFBuilder()
-    DFBuilder(
-        DataFrame(
-            "iteration"   => Int[],
-            "max_error"   => Float64[],
-            "metric_norm" => Float64[],
-            "time"        => String[],
-            "parameter"   => SVector[],
-        )
-    )
+"""
+    InfoCollector(fields::Vararg{Symbol})
+
+Construct `InfoCollector` from fields that are contained in the `info` iteration state object.
+Possible fields to select from are:
+
+- `iteration`: number of iteration at which the information was obtained.
+- `err_grid`: error estimate on all parameter points of the training grid.
+- `err_max`: maximal error estimate on the grid.
+- `λ_grid`: RB energies on all training grid points.
+- `μ`: parameter point at which truth solve has been performed.
+- `extend_info`: info that is specific to the chosen extension procedure.
+- `basis`: `RBasis` at the current iteration.
+- `h_cache`: `HamiltonianCache` at the current iteration.
+"""
+function InfoCollector(fields::Vararg{Symbol})
+    InfoCollector(Dict(f => [] for f in fields))
 end
 
 """
-    (builder::DFBuilder)(info)
+    (collector::InfoCollector)(info)
 
-Push assembly information into `DataFrame`. Note that the functor can be chained with
-different callback functions using `∘`.
+Push iteration information into `InfoCollector` and return `info` object, containing the `InfoCollector` itself.
 """
-function (builder::DFBuilder)(info)
-    if info.state == :iterate
-        push!( # Push standard data into DataFrame
-            builder.df,
-            (iteration=info.iteration, max_error=info.err_max,
-             metric_norm=info.metric_norm, time=info.iter_time, parameter=info.μ),
-        )
+function (collector::InfoCollector)(info)
+    for (key, val) in collector.data
+        !haskey(info, key) && continue  # If key is not contained, do not push
+        push!(val, info[key])
     end
-    merge(info, (; builder)) # Insert DFBuilder into info and return
+    merge(info, (; collector)) # Insert InfoCollector into info and return
 end

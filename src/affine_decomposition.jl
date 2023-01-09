@@ -28,6 +28,7 @@ Base.length(ad::AffineDecomposition) = length(ad.terms[1])
 Base.size(ad::AffineDecomposition, args...) = size(ad.terms[1], args...)
 n_terms(ad::AffineDecomposition) = length(ad.terms)
 
+# TODO: fix docs here
 """
     (ad::AffineDecomposition)(μ)
 

@@ -11,7 +11,7 @@ using ReducedBasis
 σz = sparse([1.0 0.0; 0.0 -1.0])
 
 # Convert local-site to many-body operator
-function to_global(L::Int, op::M, i::Int) where {M<:AbstractMatrix}
+function to_global(op::M, L::Int, i::Int) where {M<:AbstractMatrix}
     d = size(op, 1)
     @assert d == size(op, 2) "Operator has to be a square matrix."
 
@@ -25,10 +25,10 @@ function to_global(L::Int, op::M, i::Int) where {M<:AbstractMatrix}
 end
 
 function xxz_chain(L)
-    H1 = 0.25 * sum([to_global(L, σx, i) * to_global(L, σx, i + 1) +
-                     to_global(L, σy, i) * to_global(L, σy, i + 1) for i in 1:(L-1)])
-    H2 = 0.25 * sum([to_global(L, σz, i) * to_global(L, σz, i + 1) for i in 1:(L-1)])
-    H3 = 0.5  * sum([to_global(L, σz, i) for i in 1:L])
+    H1 = 0.25 * sum([to_global(σx, L, i) * to_global(σx, L, i + 1) +
+                     to_global(σy, L, i) * to_global(σy, L, i + 1) for i in 1:(L-1)])
+    H2 = 0.25 * sum([to_global(σz, L, i) * to_global(σz, L, i + 1) for i in 1:(L-1)])
+    H3 = 0.5  * sum([to_global(σz, L, i) for i in 1:L])
     coefficient_map = μ -> [1.0, μ[1], -μ[2]]
     AffineDecomposition([H1, H2, H3], coefficient_map)
 end
@@ -83,55 +83,46 @@ nocomp = NoCompress()
 hJ = range(0.0, 3.5, 40)
 grid_train = RegularGrid(Δ, hJ);
 
-# Offline phase (RB assembly)
-dfbuilder = DFBuilder()
+## Offline phase (RB assembly)
+collector = InfoCollector(:err_grid, :λ_grid, :μ)
 basis, h, info = assemble(
-    H_matrix, grid_train, greedy, lobpcg, qrcomp; callback=dfbuilder ∘ print_callback
+    H_matrix, grid_train, greedy, lobpcg, qrcomp; callback=collector ∘ print_callback
     # H_mpo, grid_train, greedy, dm, edcomp; callback=dfbuilder ∘ print_callback,
 )
 # basis, info = assemble(H_matrix, grid_train, pod, lobpcg)
 # h_cache = HamiltonianCache(H, basis)
 # h = h_cache.h
-diagnostics = dfbuilder.df;
 
 # Offline phase (observable compression)
 M = AffineDecomposition([H_matrix.terms[3]], μ -> [2 / L])
 # M = AffineDecomposition([H_mpo.terms[3]], μ -> [2 / L])
-m = compress(M, basis);
+m = compress(M, basis)
+m_reduced = m([1]);  # Save observable, since coefficients do not depend on μ 
 
-# Online phase
+##
+E_grids = [map(maximum, λ_grid) for λ_grid in collector.data[:λ_grid]]
+varcheck = BitMatrix(undef, size(grid_train))
+for (idx, λ) in pairs(E_grids[end])
+    varcheck[idx] = E_grids[1][idx] .> λ
+end
+
+## Online phase
 Δ_online    = range(first(Δ), last(Δ), 150)
 hJ_online   = range(first(hJ), last(hJ), 150)
 grid_online = RegularGrid(Δ_online, hJ_online)
 
-magnetization = Matrix{Float64}(undef, size(grid_online))
-m_reduced = m([1])  # Save observable, since coefficients do not depend on μ 
-for (idx, μ) in pairs(grid_online)
-    λ_rb, φ_rb = solve(h, basis.metric, μ, fulldiag)
-    magnetization[idx] = sum(eachcol(φ_rb)) do φ
-        abs(dot(φ, m_reduced, φ)) / size(φ_rb, 2)  # Divide by multiplicity
+magnetization = map(grid_online) do μ
+    _, φ_rb = solve(h, basis.metric, μ, fulldiag)
+    sum(eachcol(φ_rb)) do u
+        abs(dot(u, m_reduced, u)) / size(φ_rb, 2)  # Divide by multiplicity
     end
 end
 
 # Plot observables and snapshot points
-hm = heatmap(
-    grid_online.ranges[1],
-    grid_online.ranges[2],
-    magnetization';  # Transpose to have rows as x-axis
-    xlabel=raw"$\Delta$",
-    ylabel=raw"$h/J$",
-    title="magnetization " * raw"$\langle M \rangle = \frac{2}{L}\sum_{i=1}^L S^z_i$",
-    colorbar=true,
-    clims=(0.0, 1.0),
-    leg=false,
-)
+hm = heatmap(grid_online.ranges[1], grid_online.ranges[2], magnetization';  # Transpose to have rows as x-axis
+             xlabel=raw"$\Delta$", ylabel=raw"$h/J$", title="magnetization ",
+             colorbar=true, clims=(0.0, 1.0), leg=false)
 plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:fuchsia)
-scatter!(
-    hm,
-    [μ[1] for μ in diagnostics.parameter],
-    [μ[2] for μ in diagnostics.parameter];
-    markershape=:xcross,
-    color=:springgreen,
-    ms=3.0,
-    msw=2.0,
-)
+params = unique(basis.parameters)
+scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
+         markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)

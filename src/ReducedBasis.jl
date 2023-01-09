@@ -31,7 +31,7 @@ export EigenDecomposition, ApproxMPO, DMRG
 export reconstruct, default_sweeps
 include("mps.jl")
 
-export DFBuilder
+export InfoCollector
 export print_callback
 include("callback.jl")
 

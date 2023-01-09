@@ -30,5 +30,4 @@ using ReducedBasis: AffineDecomposition, n_terms, compress
         @test n_terms(ad_comp) == n_terms(ad_comp)
         @test size(ad_comp(μ)) == size(ad_comp)
     end
-    
 end

@@ -127,7 +127,7 @@ the `qrcomp.tol` tolerance are dropped.
 function extend(basis::RBasis, new_snapshot, μ, qrcomp::QRCompress)
     B    = hcat(basis.snapshots...)
     Ψ    = hcat(new_snapshot...)
-    fact = qr(Ψ - B * (cholesky(basis.metric) \ (B' * Ψ)), Val(true))  # pivoted QR
+    fact = qr(Ψ - B * (cholesky(basis.metric) \ (B' * Ψ)), ColumnNorm())  # pivoted QR
 
     # Keep orthogonalized vectors of significant norm
     max_per_row = dropdims(maximum(abs, fact.R; dims=2); dims=2)
