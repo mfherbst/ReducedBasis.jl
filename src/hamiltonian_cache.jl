@@ -1,4 +1,3 @@
-# TODO: introduce type parameters?
 """
 Convenience type storing a Hamiltonian, its applications to vectors and its compressions.
 

@@ -1,11 +1,18 @@
+"""
+Super type of all error estimators.
+"""
 abstract type ErrorEstimate end
+
+"""
+Estimator type for the residual
+``\\mathrm{Res}(\\mathbf{\\mu}) = \\lVert H(\\mathbf{\\mu}) B \\varphi(\\mathbf{\\mu}) - \\lambda B \\varphi(\\mathbf{\\mu}) \\rVert``.
+"""
 struct Residual <: ErrorEstimate end
 
 """
     estimate_error(::Residual, μ, h_cache::HamiltonianCache, basis::RBasis, sol_rb)
     
-Estimate error of reduced basis using the residual
-``\\mathrm{Res}(\\mathbf{\\mu}) = \\lVert H(\\mathbf{\\mu}) B \\varphi(\\mathbf{\\mu}) - \\lambda B \\varphi(\\mathbf{\\mu}) \\rVert``.
+Estimate error of reduced basis using the [`Residual`](@ref) estimator.
 """
 function estimate_error(::Residual, μ, h_cache::HamiltonianCache, basis::RBasis, sol_rb)
     h²_sum = h_cache.h²(μ)
@@ -118,7 +125,6 @@ function assemble(
 
         # Append truth vector according to solver method
         d_basis_old = dimension(basis)
-        # basis_new, extend_info... = extend!(basis, truth.vectors, μ_next, compressalg)
         basis_new, extend_info... = extend(basis, truth.vectors, μ_next, compressalg)
 
         # Exit: ill-conditioned BᵀB

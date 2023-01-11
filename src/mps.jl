@@ -86,15 +86,6 @@ the basis assembly.
 
 Includes the exact operator sum in `opsum` to be able to produce efficient sums of MPOs
 when constructing [`AffineDecomposition`](@ref) sums explicitly.
-
-# Fields
-
-- `mpo::MPO`
-- `opsum::Sum{Scaled{ComplexF64,Prod{Op}}}`
-- `cutoff::Float64=1e-9`: relative cutoff for singular values.
-- `maxdim::Int=1000`: maximal bond dimension.
-- `mindim::Int=1`: minimal bond dimension.
-- `truncate::Bool=true`: disables all truncate if set to `false`.
 """
 struct ApproxMPO
     mpo::MPO
@@ -104,17 +95,46 @@ struct ApproxMPO
     mindim::Int
     truncate::Bool
 end
+"""
+    ApproxMPO(mpo::MPO, opsum; <keyword arguments>)
+    
+Construct an `ApproxMPO` with truncation default settings.
+
+# Arguments
+
+- `mpo::MPO`
+- `opsum::Sum{Scaled{ComplexF64,Prod{Op}}}`
+- `cutoff::Float64=1e-9`: relative cutoff for singular values.
+- `maxdim::Int=1000`: maximal bond dimension.
+- `mindim::Int=1`: minimal bond dimension.
+- `truncate::Bool=true`: disables all truncate if set to `false`.
+"""
 function ApproxMPO(mpo::MPO, opsum; cutoff=1e-9, maxdim=1000, mindim=1, truncate=true)
     ApproxMPO(mpo, opsum, cutoff, maxdim, mindim, truncate)
 end
 
+"""
+    *(o::ApproxMPO, mps::MPS)
+
+Apply `o.mpo` to `mps` using the truncation arguments contained in `o`.
+"""
 function Base.:*(o::ApproxMPO, mps::MPS)
     apply(
         o.mpo, mps; cutoff=o.cutoff, maxdim=o.maxdim, mindim=o.mindim, truncate=o.truncate,
     )
 end
-Base.length(mpo::ApproxMPO) = length(mpo.mpo)
-Base.size(mpo::ApproxMPO) = size(mpo.mpo)
+"""
+    length(o::ApproxMPO)
+
+Return length of `o.mpo`.
+"""
+Base.length(o::ApproxMPO) = length(o.mpo)
+"""
+    size(o::ApproxMPO)
+
+Return size of `o.mpo`.
+"""
+Base.size(o::ApproxMPO) = size(o.mpo)
 
 """
     (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)

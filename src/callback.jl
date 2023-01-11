@@ -1,5 +1,3 @@
-using DataFrames
-
 """
     print_callback(info)
 
@@ -35,7 +33,7 @@ struct InfoCollector
     data::Dict{Symbol,Vector}
 end
 """
-    InfoCollector(fields::Vararg{Symbol})
+    InfoCollector(fields::Symbol...)
 
 Construct `InfoCollector` from fields that are contained in the `info` iteration state object.
 Possible fields to select from are:
@@ -49,7 +47,7 @@ Possible fields to select from are:
 - `basis`: `RBasis` at the current iteration.
 - `h_cache`: `HamiltonianCache` at the current iteration.
 """
-function InfoCollector(fields::Vararg{Symbol})
+function InfoCollector(fields::Symbol...)
     InfoCollector(Dict(f => [] for f in fields))
 end
 

@@ -4,7 +4,7 @@ In this example we want to provide a more in-depth introduction to the reduced b
 The reduced basis workflow roughly boils down to three steps:
 
 1. Model setup: As a first step, we need to initialize the model Hamiltonian and the associated physical parameters.
-2. Offline phase: Secondly, an assembly strategy and a truth solving method is chosen, with which we are able to generate the reduced basis surrogate.
+2. Offline phase: An assembly strategy and a truth solving method is chosen, with which we are able to generate the reduced basis surrogate.
 3. Online phase: Lastly, using the surrogate, we measure observables with reduced computational cost.
 
 Let us see, how to perform these steps using `ReducedBasis`.
@@ -84,10 +84,9 @@ end
 
 Using these function, we initialize a small system of length ``L=6`` with a Hamiltonian matrix dimension of ``2^6 = 64``:
 
-```@example xxz_ed
+```@example xxz_ed; continued = true
 L = 6
 H = xxz_chain(L)
-@show size(H)
 ```
 
 ## Offline phase

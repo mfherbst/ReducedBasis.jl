@@ -24,8 +24,25 @@ struct AffineDecomposition{T<:AbstractArray,F<:Function}
     end
 end
 
+"""
+    Base.length(ad::AffineDecomposition)
+
+Return `length` of affine terms.
+"""
 Base.length(ad::AffineDecomposition) = length(ad.terms[1])
-Base.size(ad::AffineDecomposition, args...) = size(ad.terms[1], args...)
+"""
+    size(ad::AffineDecomposition)
+    size(ad::AffineDecomposition, i::Int)
+
+Return `size` of affine terms. Alternatively, return size of specified dimension `i`
+"""
+Base.size(ad::AffineDecomposition) = size(ad.terms[1])
+Base.size(ad::AffineDecomposition, i::Int) = size(ad.terms[1], i)
+"""
+    n_terms(ad::AffineDecomposition)
+
+Return the number ``R`` of affine terms.
+"""
 n_terms(ad::AffineDecomposition) = length(ad.terms)
 
 # TODO: fix docs here
@@ -51,16 +68,8 @@ end
 Compress one term of an [`AffineDecomposition`](@ref) of `AbstractMatrix` type.
 """
 function compress(M::AbstractMatrix, basis::RBasis)
+    # `hcat` memory bottleneck for large problems?
+    # TODO: benchmark for realistic problems
     B = hcat(basis.snapshots...) * basis.vectors
     B' * M * B
-    # TODO: which type to use here? -> problems with LOBPCG and Float64(...complex...)
-    # m1 = Matrix{eltype(M)}(undef, size(M, 1), dimension(basis))
-    # for i in 1:dimension(basis)
-    #     m1[:, i] .= M * basis.snapshots[i]
-    # end
-    # m2 = Matrix{eltype(M)}(undef, dimension(basis), dimension(basis))
-    # for j = 1:dimension(basis)
-    #     m2[j, :] .= dropdims(basis.snapshots[j]' * m1; dims=1)
-    # end
-    # basis.vectors' * m2 * basis.vectors
 end

@@ -54,7 +54,7 @@ function xxz_chain(sites::IndexSet; kwargs...)
 end
 
 ## Offline parameters
-L        = 6
+L        = 8
 sites    = siteinds("S=1/2", L)
 H_matrix = xxz_chain(L)
 H_mpo    = xxz_chain(sites; truncate=true, cutoff=1e-9)
@@ -79,7 +79,7 @@ edcomp = EigenDecomposition(; cutoff=1e-7)
 nocomp = NoCompress()
 
 # Training grid
-Δ  = range(-1.0, 2.5, 40)
+Δ = range(-1.0, 2.5, 40)
 hJ = range(0.0, 3.5, 40)
 grid_train = RegularGrid(Δ, hJ);
 
@@ -87,8 +87,9 @@ grid_train = RegularGrid(Δ, hJ);
 collector = InfoCollector(:err_grid, :λ_grid, :μ)
 basis, h, info = assemble(
     H_matrix, grid_train, greedy, lobpcg, qrcomp; callback=collector ∘ print_callback
-    # H_mpo, grid_train, greedy, dm, edcomp; callback=dfbuilder ∘ print_callback,
-)
+    # H_mpo, grid_train, greedy, dm, edcomp; callback=collector ∘ print_callback,
+);
+##
 # basis, info = assemble(H_matrix, grid_train, pod, lobpcg)
 # h_cache = HamiltonianCache(H, basis)
 # h = h_cache.h
@@ -103,7 +104,7 @@ m_reduced = m([1]);  # Save observable, since coefficients do not depend on μ
 E_grids = [map(maximum, λ_grid) for λ_grid in collector.data[:λ_grid]]
 varcheck = BitMatrix(undef, size(grid_train))
 for (idx, λ) in pairs(E_grids[end])
-    varcheck[idx] = E_grids[1][idx] .> λ
+    varcheck[idx] = round.(E_grids[end-1][idx] - λ; digits=10) .≥ 0.0
 end
 
 ## Online phase

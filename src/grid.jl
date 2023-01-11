@@ -6,11 +6,11 @@ struct RegularGrid{D,N<:Number} <: AbstractArray{SVector{D,N},D}
     ranges::Vector{StepRangeLen}
 end
 """
-    RegularGrid(ranges::Vararg{<:StepRangeLen})
+    RegularGrid(ranges::StepRangeLen...)
 
 Construct a ``D``-dimensional [`RegularGrid`](@ref) from ``D`` ranges.
 """
-function RegularGrid(ranges::Vararg{<:StepRangeLen})
+function RegularGrid(ranges::StepRangeLen...)
     @assert all(r -> eltype(r) == eltype(ranges[1]), ranges)
     Dim = length(ranges)
     T = eltype(ranges[1])
@@ -21,8 +21,19 @@ function RegularGrid(ranges::Vararg{<:StepRangeLen})
     RegularGrid{Dim,T}(points, [ranges...])
 end
 
-# AbstractArray interface
+"""
+    Base.length(grid::RegularGrid)
+
+Compute the total number of grid points.
+"""
 Base.length(grid::RegularGrid) = length(grid.points)
+"""
+    size(grid::RegularGrid)
+    size(grid::RegularGrid, i::Int)
+
+Return grid size, i.e. the number of grid points per dimension.
+Alternatively return only for specified dimension `i`.
+"""
 Base.size(grid::RegularGrid) = size(grid.points)
 Base.size(grid::RegularGrid, i::Int) = size(grid.points, i)
 Base.getindex(grid::RegularGrid, args...) = getindex(grid.points, args...)

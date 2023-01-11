@@ -54,15 +54,21 @@ Correspondingly, the elements of `v1` and `v2` must support a `LinearAlgebra.dot
 In the case where `v1 = v2`, the Gram matrix is computed.
 """
 function overlap_matrix(v1::Vector, v2::Vector)
-    @assert eltype(v1) == eltype(v2)
-    # TODO: Which type for zeros to use here? (defaults to Float64)
-    T = typeof(dot(v1[1], v2[1]))  # TODO: temporary -> replace by map?
-    overlaps = zeros(T, length(v1), length(v2))
-    for j in 1:length(v2), i in j:length(v1)
-        overlaps[i, j] = dot(v1[i], v2[j])
-        overlaps[j, i] = overlaps[i, j]'  # Use symmetry of dot product
+    if length(v1) == length(v2)
+        overlaps = map(CartesianIndices((1:length(v1), 1:length(v2)))) do idx
+            # Strongs zeros on lower triangle
+            (first(idx.I) > last(idx.I)) ? false : dot(v1[first(idx.I)], v2[last(idx.I)])
+        end  # Returns Matrix{Number}
+        for j in 1:length(v2), i in j:length(v1)  # Use hermiticity to fill lower triangle
+            overlaps[i, j] = overlaps[j, i]'
+        end
+        return promote_type.(overlaps)  # Convert to floating-point type
+    else  # Do not use hermiticity
+        overlaps = map(CartesianIndices((1:length(v1), 1:length(v2)))) do idx
+            dot(v1[first(idx.I)], v2[last(idx.I)])
+        end
+        return overlaps
     end
-    overlaps
 end
 
 """
@@ -93,9 +99,11 @@ end
 struct NoCompress end
 
 """
-    QRCompress(; tol::Float64=1e-10)
+Extension type for QR orthonormalization and compression. See [`extend`](@ref) for details.
 
-Extension type for QR orthonormalization and compression. See also [`extend`](@ref).
+# Fields
+
+- `tol::Float64`: tolerance for compressing insignificant basis snapshots.
 """
 Base.@kwdef struct QRCompress
     tol::Float64 = 1e-10
