@@ -54,21 +54,21 @@ function xxz_chain(sites::IndexSet; kwargs...)
 end
 
 ## Offline parameters
-L        = 8
+L        = 6
 sites    = siteinds("S=1/2", L)
 H_matrix = xxz_chain(L)
 H_mpo    = xxz_chain(sites; truncate=true, cutoff=1e-9)
 
 # Assembly strategies
-greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=true)
+greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=32, init_from_rb=true)
 pod    = POD(; n_truth=64, verbose=true)
 
 # Truth solvers (degeneracy: m = L + 1 at (Δ, h/J) = (-1, 0))
 fulldiag = FullDiagonalization(; n_target=L+1, tol_degeneracy=1e-4)
 lobpcg = LOBPCG(; n_target=L+1, tol_degeneracy=1e-4, tol=1e-9)
 dm = DMRG(;
-    n_target=L+1,
-    tol_degeneracy=1e-4,
+    n_target=1,
+    tol_degeneracy=0.0,
     sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000),
     observer=() -> DMRGObserver(; energy_tol=1e-9),
 )
@@ -83,13 +83,12 @@ nocomp = NoCompress()
 hJ = range(0.0, 3.5, 40)
 grid_train = RegularGrid(Δ, hJ);
 
-## Offline phase (RB assembly)
+# Offline phase (RB assembly)
 collector = InfoCollector(:err_grid, :λ_grid, :μ)
 basis, h, info = assemble(
     H_matrix, grid_train, greedy, lobpcg, qrcomp; callback=collector ∘ print_callback
     # H_mpo, grid_train, greedy, dm, edcomp; callback=collector ∘ print_callback,
 );
-##
 # basis, info = assemble(H_matrix, grid_train, pod, lobpcg)
 # h_cache = HamiltonianCache(H, basis)
 # h = h_cache.h
@@ -100,14 +99,14 @@ M = AffineDecomposition([H_matrix.terms[3]], μ -> [2 / L])
 m = compress(M, basis)
 m_reduced = m([1]);  # Save observable, since coefficients do not depend on μ 
 
-##
 E_grids = [map(maximum, λ_grid) for λ_grid in collector.data[:λ_grid]]
 varcheck = BitMatrix(undef, size(grid_train))
 for (idx, λ) in pairs(E_grids[end])
     varcheck[idx] = round.(E_grids[end-1][idx] - λ; digits=10) .≥ 0.0
 end
+@show all(varcheck)
 
-## Online phase
+# Online phase
 Δ_online    = range(first(Δ), last(Δ), 150)
 hJ_online   = range(first(hJ), last(hJ), 150)
 grid_online = RegularGrid(Δ_online, hJ_online)

@@ -48,7 +48,5 @@ end
 include("grid.jl")
 include("affine_decomposition.jl")
 include("rbasis.jl")
-include("errors.jl")
-include("greedy.jl")
-include("xxz_correctness.jl")
+include("xxz.jl")
 include("mps.jl")

@@ -47,6 +47,9 @@ using ReducedBasis
     hJ_on    = range(first(hJ_off), last(hJ_off), 100)
     grid_on  = RegularGrid(Δ_on, hJ_on)
 
+    greedy = Greedy(;
+        estimator=Residual(), tol=1e-3, n_truth_max=32, init_from_rb=true, verbose=false
+    )
     edcomp = EigenDecomposition(; cutoff=1e-7)
     dm_deg = DMRG(;
         n_target=L+1,
@@ -91,7 +94,7 @@ using ReducedBasis
     end
 
     # Check if errors are low at solved parameter points
-    function test_low_errors(basis::RBasis, h_cache::HamiltonianCache, solver_truth)
+    function test_low_errors(basis::RBasis, info, solver_truth)
         @testset "Low errors at solved parameter points" begin
             fd = FullDiagonalization(;
                 tol_degeneracy=solver_truth.tol_degeneracy, n_target=solver_truth.n_target
@@ -102,9 +105,9 @@ using ReducedBasis
             values_fd  = Float64[]
             vectors_fd = Matrix[]
             for μ in unique(basis.parameters)
-                sol    = solve(h_cache.h, basis.metric, μ, fd)
+                sol    = solve(info.h_cache.h, basis.metric, μ, fd)
                 sol_fd = solve(H_matrix, μ, nothing, fd)
-                push!(errors, estimate_error(greedy.estimator, μ, h_cache, basis, sol))
+                push!(errors, estimate_error(greedy.estimator, μ, info.h_cache, basis, sol))
                 append!(values, sol.values)
                 push!(vectors, sol.vectors)
                 append!(values_fd, sol_fd.values)
@@ -137,14 +140,14 @@ using ReducedBasis
             @test multiplicity(basis)[1] > 1
             test_variational(collector)
             test_L6_magn_plateaus(basis, h, dm_deg)
-            test_low_errors(basis, info.h_cache, dm_deg)
+            test_low_errors(basis, info, dm_deg)
         end
         @testset "Greedy assembly: non-degenerate" begin
             collector = InfoCollector(:λ_grid)
             basis, h, info = assemble(H, grid_off, greedy, dm_nondeg, edcomp; callback=collector)
             test_variational(collector)
             test_L6_magn_plateaus(basis, h, dm_nondeg)
-            test_low_errors(basis, info.h_cache, dm_nondeg)
+            test_low_errors(basis, info, dm_nondeg)
         end
     end
 
@@ -158,14 +161,14 @@ using ReducedBasis
             @test multiplicity(basis)[1] > 1
             test_variational(collector)
             test_L6_magn_plateaus(basis, h, dm_deg)
-            test_low_errors(basis, info.h_cache, dm_deg)
+            test_low_errors(basis, info, dm_deg)
         end
         @testset "Greedy assembly: non-degenerate" begin
             collector = InfoCollector(:λ_grid)
             basis, h, info = assemble(H, grid_off, greedy, dm_nondeg, edcomp; callback=collector)
             test_variational(collector)
             test_L6_magn_plateaus(basis, h, dm_nondeg)
-            test_low_errors(basis, info.h_cache, dm_nondeg)
+            test_low_errors(basis, info, dm_nondeg)
         end
     end
 end

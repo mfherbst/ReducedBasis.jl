@@ -50,16 +50,9 @@ from the reduced basis using
 """
 function estimate_gs(basis::RBasis, h::AffineDecomposition, μ, _, solver_online)
     # TODO: How to deal with redundant argument in this case?
+    # TODO: benchmark for realistic problems
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
     hcat(basis.snapshots...) * basis.vectors * φ_rb
-    # φ_trans = basis.vectors * φ_rb
-    # Φ_rb = Matrix{eltype(φ_trans)}(undef, length(basis.snapshots[1]), size(φ_rb, 2))
-    # for j in 1:length(basis.snapshots), k in 1:size(φ_trans, 2)
-    #     for i in 1:length(basis.snapshots)
-    #         Φ_rb[j, k] += basis.snapshots[i][j] * φ_trans[i, k]  # Error with .+= ?
-    #     end
-    # end
-    # Φ_rb
 end
 
 """
@@ -140,7 +133,7 @@ function assemble(
         end
 
         # Update basis with new snapshot/vector/metric and compute reduced terms
-        basis   = basis_new
+        basis   = basis_new  # TODO: push into info NamedTuple instead?
         h_cache = HamiltonianCache(h_cache, basis)
 
         # Update iteration state info

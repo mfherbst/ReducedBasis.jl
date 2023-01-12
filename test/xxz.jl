@@ -14,7 +14,7 @@ using ReducedBasis
     grid_on  = RegularGrid(Δ_on, hJ_on)
 
     greedy = Greedy(;
-        estimator=Residual(), tol=1e-3, n_truth_max=64, init_from_rb=true, verbose=false
+        estimator=Residual(), tol=1e-3, n_truth_max=32, init_from_rb=true, verbose=false
     )
     qrcomp = QRCompress(; tol=1e-10)
     pod    = POD(; n_truth=32, verbose=false)
@@ -49,7 +49,7 @@ using ReducedBasis
     end
 
     # Check if errors are low at solved parameter points
-    function test_low_errors(basis::RBasis, h_cache::HamiltonianCache, solver_truth)
+    function test_low_errors(basis::RBasis, info, solver_truth)
         @testset "Low errors at solved parameter points" begin
             fd = FullDiagonalization(;
                 tol_degeneracy=solver_truth.tol_degeneracy, n_target=solver_truth.n_target
@@ -60,9 +60,9 @@ using ReducedBasis
             values_fd  = Float64[]
             vectors_fd = Matrix[]
             for μ in unique(basis.parameters)
-                sol    = solve(h_cache.h, basis.metric, μ, fd)
-                sol_fd = solve(h_cache.H, μ, nothing, fd)
-                push!(errors, estimate_error(greedy.estimator, μ, h_cache, basis, sol))
+                sol    = solve(info.h_cache.h, basis.metric, μ, fd)
+                sol_fd = solve(info.h_cache.H, μ, nothing, fd)
+                push!(errors, estimate_error(greedy.estimator, μ, info.h_cache, basis, sol))
                 append!(values, sol.values)
                 push!(vectors, sol.vectors)
                 append!(values_fd, sol_fd.values)
@@ -92,7 +92,7 @@ using ReducedBasis
             @test multiplicity(basis)[1] > 1
             test_variational(collector)
             test_L6_magn_plateaus(basis, h, lobpcg)
-            test_low_errors(basis, info.h_cache, lobpcg)
+            test_low_errors(basis, info, lobpcg)
         end
 
         @testset "non-degenerate" begin
@@ -101,7 +101,7 @@ using ReducedBasis
             basis, h, info = assemble(H, grid_off, greedy, lobpcg, qrcomp; callback=collector)
             test_variational(collector)
             test_L6_magn_plateaus(basis, h, lobpcg)
-            test_low_errors(basis, info.h_cache, lobpcg)
+            test_low_errors(basis, info, lobpcg)
         end
     end
 
@@ -113,7 +113,7 @@ using ReducedBasis
             @test multiplicity(basis)[1] > 1
             test_variational(collector)
             test_L6_magn_plateaus(basis, h, fulldiag)
-            test_low_errors(basis, info.h_cache, fulldiag)
+            test_low_errors(basis, info, fulldiag)
         end
 
         @testset "non-degenerate" begin
@@ -122,7 +122,7 @@ using ReducedBasis
             basis, h, info = assemble(H, grid_off, greedy, fulldiag, qrcomp; callback=collector)
             test_variational(collector)
             test_L6_magn_plateaus(basis, h, fulldiag)
-            test_low_errors(basis, info.h_cache, fulldiag)
+            test_low_errors(basis, info, fulldiag)
         end
     end
 

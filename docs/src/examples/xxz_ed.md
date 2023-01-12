@@ -1,22 +1,24 @@
-# The S=1/2 XXZ chain using exact diagonalization
+# The reduced basis workflow
 
-In this example we want to provide a more in-depth introduction to the reduced basis framework as applied to quantum spin systems.
-The reduced basis workflow roughly boils down to three steps:
+In this example we want to provide an introduction to the reduced basis framework as applied to quantum spin systems.
+We want to see, from start to finish, how to set up a physical model, how to generate a surrogate basis and how to finally compute observable quantities.
+For that purpose, we cover the three basic steps of the reduced basis workflow:
 
 1. Model setup: As a first step, we need to initialize the model Hamiltonian and the associated physical parameters.
-2. Offline phase: An assembly strategy and a truth solving method is chosen, with which we are able to generate the reduced basis surrogate.
+2. Offline phase: An assembly strategy and a truth solving method is chosen, with which we generate the reduced basis surrogate and we prepare observables for later measurement.
 3. Online phase: Lastly, using the surrogate, we measure observables with reduced computational cost.
 
-Let us see, how to perform these steps using `ReducedBasis`.
+Let us see, how to perform these steps using `ReducedBasis.jl`.
 As a first application, we will explore a canonical model from quantum spin physics, the *one-dimensional XXZ chain*
 
 ```math
 H = \sum_{i=1}^{L-1} \big[ S_i^x S_{i+1}^x + S_i^y S_{i+1}^y + \Delta S_i^z S_{i+1}^z \big] - \frac{h}{J} \sum_{i=1}^L S_i^z .
 ```
 
-To keep things simple, we will use exact diagonalization techniques to perform the truth solves.
+To assemble the basis, a greedy algorithm will be used that tries to select as few snapshots as possible to generate a good surrogate.
+And to keep things simple, we will utilize exact diagonalization techniques to perform the eigenvalue solves to obtain snapshots.
 This means, the ``H`` will be represented by a (sparse) matrix and the snapshots by vectors of Hilbert space dimension.
-Alternatively, one could also provide ``H`` in so-called matrix-product-operator form and obtain ground states of ``H`` as matrix product states.
+Alternatively, one could e.g. provide ``H`` in so-called matrix-product-operator form and obtain ground states of ``H`` as matrix product states.
 This however is reserved for later examples.
 
 !!! note "Simulation parameters"
@@ -26,13 +28,23 @@ This however is reserved for later examples.
 
 ## Model setup
 
-To implement the XXZ Hamiltonian matrix, we first need a way to create global many-body operators
+Let us first set up the parametrized Hamiltonian matrix.
+In this specific example, we will need some utility functions to generate many-body spin Hamiltonians but in other applications, possibly not connected to physics, the Hamiltonian setup will of course differ.
+However, all parametrized Hamiltonians will need to be cast into the form of an *affine decomposition*
+
+```math
+H (\mathbf{\mu}) = \sum_{q=1}^Q \theta_q(\mathbf{\mu})\, H_q .
+```
+
+The corresponding type in `ReducedBasis.jl` is the [`AffineDecomposition`](@ref) which, as we will see, will account for both Hamiltonians and other observables that one would want to measure.
+
+Now coming to the specific example of XXZ chain, we want to implement the parametrized Hamiltonian matrix, for which we first need a way to create global many-body operators
 
 ```math
 S_i^\gamma = (\otimes^{i-1} I) \otimes \frac{1}{2}\sigma^\gamma \otimes (\otimes^{N-i} I) ,
 ```
 
-which in this case are Spin-1/2 operators featuring the [Pauli matrices](https://en.wikipedia.org/wiki/Pauli_matrices) ``\sigma^\gamma``.
+which in this case are ``S=1/2`` operators featuring the [Pauli matrices](https://en.wikipedia.org/wiki/Pauli_matrices) ``\sigma^\gamma``.
 So, let us first define the Pauli matrices as sparse matrices
 
 ```@example xxz_ed; continued = true
@@ -62,14 +74,9 @@ function to_global(op::M, L::Int, i::Int) where {M<:AbstractMatrix}
 end
 ```
 
-In the course of the reduced basis assembly, we will need to access the Hamiltonian matrix as a linear combination of matrices and parameter-dependent coefficients, which is known as an *affine decomposition*
-
-```math
-H (\mathbf{\mu}) = \sum_{r=1}^R \theta_r(\mathbf{\mu})\, H_r .
-```
-
-In our specific case, we can identify the parameter vector ``\mathbf{\mu} = (1, \Delta, h/J)`` and the coefficient function ``\mathbf{\theta}(\mathbf{\mu}) = (1, \mu_1, -\mu_2)``.
-The affine decomposition is realized in the [`AffineDecomposition`](@ref) type which allows us to implement the XXZ Hamiltonian as defined above:
+To be able to create an [`AffineDecomposition`](@ref), we first need to identify the terms ``H_q`` and the coefficient functions ``\\theta_q(\\mathbf{\\mu})``.
+In our specific case, we can identify the parameter vector ``\mathbf{\mu} = (1, \Delta, h/J)`` and the associated coefficient function as ``\mathbf{\theta}(\mathbf{\mu}) = (1, \mu_1, -\mu_2)``.
+Hence we arrive at the following Hamiltonian implementation:
 
 ```@example xxz_ed; continued = true
 function xxz_chain(L)
@@ -82,7 +89,7 @@ function xxz_chain(L)
 end
 ```
 
-Using these function, we initialize a small system of length ``L=6`` with a Hamiltonian matrix dimension of ``2^6 = 64``:
+Using these functions, we initialize a small system of length ``L=6`` with a Hamiltonian matrix dimension of ``2^6 = 64``:
 
 ```@example xxz_ed; continued = true
 L = 6
@@ -137,7 +144,8 @@ M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
 m = compress(M, basis)
 ```
 
-And since the coefficient ``2L^{-1}`` is actually parameter-independent, we can just construct `m` at some parameter point to obtain the reduced magnetization matrix for all parameters:
+Note that the compression again produces an [`AffineDecomposition`](@ref) but now containing the low-dimensional matrices that operate in reduced basis space.
+Since the coefficient ``2L^{-1}`` is actually parameter-independent, we can just construct `m` at some parameter point to obtain the reduced magnetization matrix for all parameters:
 
 ```@example xxz_ed; continued = true
 m_reduced = m([1])
@@ -175,7 +183,7 @@ end
 ```
 
 Finally, we can take a look at the results.
-Note that we need to transpose the `magnetization` matrix, to use the rows as the x-axis.
+Note that, to plot a magnetization heatmap, we need to transpose the `magnetization` matrix, in order to use the rows as the x-axis.
 In addition to the magnetization, let us also plot the parameter points at which we performed truth solves in the offline stage:
 
 ```@example xxz_ed
@@ -187,3 +195,5 @@ params = unique(basis.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
          markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)
 ```
+
+As expected from theory, we observe ``L/2+1`` discrete magnetization plateaus, as well as a ferromagnetic (``M=1``) and a antiferromagnetic phase (``M=0``) in the ground state phase diagram.
