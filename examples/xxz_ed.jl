@@ -32,8 +32,8 @@ end
 # Offline parameters
 L = 6
 H = xxz_chain(L)
-Δ = range(-1.0, 2.5, 40)
-hJ = range(0.0, 3.5, 40)
+Δ = range(-1.0, 2.5; length=40)
+hJ = range(0.0, 3.5; length=40)
 grid_train = RegularGrid(Δ, hJ)
 greedy = Greedy(; estimator=Residual(), tol=1e-3, init_from_rb=true)
 lobpcg = LOBPCG(; n_target=1, tol_degeneracy=1e-4, tol=1e-9);
@@ -48,8 +48,8 @@ m = compress(M, basis)
 m_reduced = m([1])
 
 # Online phase
-Δ_online = range(first(Δ), last(Δ), 100)
-hJ_online = range(first(hJ), last(hJ), 100)
+Δ_online = range(first(Δ), last(Δ); length=100)
+hJ_online = range(first(hJ), last(hJ); length=100)
 grid_online = RegularGrid(Δ_online, hJ_online)
 fulldiag = FullDiagonalization(lobpcg)
 magnetization = map(grid_online) do μ

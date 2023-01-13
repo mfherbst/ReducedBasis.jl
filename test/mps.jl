@@ -40,11 +40,11 @@ using ReducedBasis
     H        = xxz_chain(sites; cutoff=1e-14)  # TODO: if to large -> low residual errors at solved μ do not hold!
     H_matrix = xxz_chain(L)
     M        = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-    Δ_off    = range(-1.0, 2.5, 40)
-    hJ_off   = range(0.0, 3.5, 40)
+    Δ_off    = range(-1.0, 2.5; length=40)
+    hJ_off   = range(0.0, 3.5; length=40)
     grid_off = RegularGrid(Δ_off, hJ_off);
-    Δ_on     = range(first(Δ_off), last(Δ_off), 100)
-    hJ_on    = range(first(hJ_off), last(hJ_off), 100)
+    Δ_on     = range(first(Δ_off), last(Δ_off); length=100)
+    hJ_on    = range(first(hJ_off), last(hJ_off); length=100)
     grid_on  = RegularGrid(Δ_on, hJ_on)
 
     greedy = Greedy(;

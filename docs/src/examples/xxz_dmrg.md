@@ -76,8 +76,8 @@ edcomp = EigenDecomposition(; cutoff=1e-7)
 ```
 
 ```@example xxz_dmrg; continued = true
-Δ = range(-1.0, 2.5, 40) # hide
-hJ = range(0.0, 3.5, 40) # hide
+Δ = range(-1.0, 2.5; length=40) # hide
+hJ = range(0.0, 3.5; length=40) # hide
 grid_train = RegularGrid(Δ, hJ) # hide
 greedy = Greedy(; estimator=Residual(), n_truth_max=22, init_from_rb=true) # hide
 ```
@@ -99,8 +99,8 @@ m = compress(M, basis)
 
 ```@example xxz_dmrg; continued = true
 m_reduced = m([1]) # hide
-Δ_online = range(first(Δ), last(Δ), 100) # hide
-hJ_online = range(first(hJ), last(hJ), 100) # hide
+Δ_online = range(first(Δ), last(Δ); length=100) # hide
+hJ_online = range(first(hJ), last(hJ); length=100) # hide
 grid_online = RegularGrid(Δ_online, hJ_online) # hide
 
 fulldiag = FullDiagonalization(dm)  # hide
@@ -121,8 +121,8 @@ fulldiag = FullDiagonalization(dm)
 
 ```@example xxz_dmrg; continued = true
 m_reduced = m([1]) # hide
-Δ_online = range(first(Δ), last(Δ), 100) # hide
-hJ_online = range(first(hJ), last(hJ), 100) # hide
+Δ_online = range(first(Δ), last(Δ); length=100) # hide
+hJ_online = range(first(hJ), last(hJ); length=100) # hide
 grid_online = RegularGrid(Δ_online, hJ_online) # hide
 
 magnetization = map(grid_online) do μ # hide

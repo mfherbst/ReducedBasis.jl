@@ -35,8 +35,8 @@ end
 function fast_assemble(n_truth=20)
     L    = 6
     H    = xxz_chain(L)
-    Δ    = range(-1.0, 2.5, 30)
-    hJ   = range(0.0, 3.5, 30)
+    Δ    = range(-1.0, 2.5; length=30)
+    hJ   = range(0.0, 3.5; length=30)
     grid = RegularGrid(Δ, hJ)
     
     pod = POD(; n_truth, verbose=false)

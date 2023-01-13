@@ -28,8 +28,8 @@ L = 12
 sites = siteinds("S=1/2", L)
 H = xxz_chain(sites; cutoff=1e-9)
 
-Δ = range(-1.0, 2.5, 40)
-hJ = range(0.0, 3.5, 40)
+Δ = range(-1.0, 2.5; length=40)
+hJ = range(0.0, 3.5; length=40)
 grid_train = RegularGrid(Δ, hJ)
 greedy = Greedy(; estimator=Residual(), n_truth_max=22, init_from_rb=true)
 dm = DMRG(; n_states=1, tol_degeneracy=0.0,
@@ -46,8 +46,8 @@ m = compress(M, basis)
 m_reduced = m([1]) # hide
 
 # Online phase
-Δ_online = range(first(Δ), last(Δ), 100)
-hJ_online = range(first(hJ), last(hJ), 100)
+Δ_online = range(first(Δ), last(Δ); length=100)
+hJ_online = range(first(hJ), last(hJ); length=100)
 grid_online = RegularGrid(Δ_online, hJ_online)
 fulldiag = FullDiagonalization(dm)
 magnetization = map(grid_online) do μ

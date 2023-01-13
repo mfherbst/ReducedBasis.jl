@@ -4,7 +4,7 @@ using ReducedBasis: RegularGrid, bounds, in_bounds, shift
 
 @testset "Basic RegularGrid functionality" begin
     for D in 1:3
-        ranges = [range(sort(rand(2))..., rand(10:10:30)) for _ in 1:D]
+        ranges = [range(sort(rand(2))...; length=rand(10:10:30)) for _ in 1:D]
         grid   = RegularGrid(ranges...)
         μ      = rand.(ranges)
 
@@ -17,7 +17,7 @@ end
 
 @testset "RegularGrid shifting" begin
     for D in 1:3
-        ranges  = [range(sort(rand(2))..., rand(10:10:30)) for _ in 1:D]
+        ranges  = [range(sort(rand(2))...; length=rand(10:10:30)) for _ in 1:D]
         grid    = RegularGrid(ranges...)
         μ_shift = step.(ranges) / 2
 

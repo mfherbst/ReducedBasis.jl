@@ -112,8 +112,8 @@ Next, we need to restrict our surrogate to a certain domain in the ``(\Delta, h/
 This is achieved, for example, by defining a 2-dimensional regular grid of parameter points using [`RegularGrid`](@ref):
 
 ```@example xxz_ed; continued = true
-Δ = range(-1.0, 2.5, 40)
-hJ = range(0.0, 3.5, 40)
+Δ = range(-1.0, 2.5; length=40)
+hJ = range(0.0, 3.5; length=40)
 grid_train = RegularGrid(Δ, hJ)
 ```
 
@@ -158,8 +158,8 @@ We have finished all Hilbert-space dimension dependent steps and only operate in
 This allows us to now compute observables on a much finer grid:
 
 ```@example xxz_ed; continued = true
-Δ_online = range(first(Δ), last(Δ), 100)
-hJ_online = range(first(hJ), last(hJ), 100)
+Δ_online = range(first(Δ), last(Δ); length=100)
+hJ_online = range(first(hJ), last(hJ); length=100)
 grid_online = RegularGrid(Δ_online, hJ_online)
 ```
 
