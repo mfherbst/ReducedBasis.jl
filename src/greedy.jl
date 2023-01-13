@@ -67,7 +67,7 @@ Assemble an `RBasis` using the greedy strategy and any truth solving method.
 - `greedy::Greedy`: greedy strategy containing assembly parameters. See also [`Greedy`](@ref).
 - `solver_truth`: solving method for obtaining ground state snapshots.
 - `compressalg`: compression method for orthogonalization, etc. See also [`extend`](@ref).
-- `solver_online=FullDiagonalization(; tol_degeneracy=solver_truth.tol_degeneracy, n_target=solver_truth.n_target)`: solving method that is used for the RB generalized eigenvalue problem.
+- `solver_online=FullDiagonalization(solver_truth)`: solving method that is used for the RB generalized eigenvalue problem.
 - `callback=print_callback`: callback function that operates on the iteration state during assembly. It is possible to chain multiple callback functions using `∘`.
 """
 function assemble(
@@ -76,9 +76,7 @@ function assemble(
     greedy::Greedy,
     solver_truth,
     compressalg;
-    solver_online=FullDiagonalization(;
-        tol_degeneracy=solver_truth.tol_degeneracy, n_target=solver_truth.n_target,
-    ),
+    solver_online=FullDiagonalization(solver_truth),
     callback=print_callback,
 )
     t_init  = time_ns()  # TODO: how to outsource this time measurement to callback?

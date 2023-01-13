@@ -8,7 +8,7 @@ For that purpose, we cover the three basic steps of the reduced basis workflow:
 2. Offline phase: An assembly strategy and a truth solving method is chosen, with which we generate the reduced basis surrogate and we prepare observables for later measurement.
 3. Online phase: Lastly, using the surrogate, we measure observables with reduced computational cost.
 
-Let us see, how to perform these steps using `ReducedBasis.jl`.
+Let us see, how to perform these steps using `ReducedBasis`.
 As a first application, we will explore a canonical model from quantum spin physics, the *one-dimensional XXZ chain*
 
 ```math
@@ -36,7 +36,7 @@ However, all parametrized Hamiltonians will need to be cast into the form of an 
 H (\mathbf{\mu}) = \sum_{q=1}^Q \theta_q(\mathbf{\mu})\, H_q .
 ```
 
-The corresponding type in `ReducedBasis.jl` is the [`AffineDecomposition`](@ref) which, as we will see, will account for both Hamiltonians and other observables that one would want to measure.
+The corresponding type in `ReducedBasis` is the [`AffineDecomposition`](@ref) which, as we will see, will account for both Hamiltonians and other observables that one would want to measure.
 
 Now coming to the specific example of XXZ chain, we want to implement the parametrized Hamiltonian matrix, for which we first need a way to create global many-body operators
 
@@ -75,7 +75,7 @@ end
 ```
 
 To be able to create an [`AffineDecomposition`](@ref), we first need to identify the terms ``H_q`` and the coefficient functions ``\\theta_q(\\mathbf{\\mu})``.
-In our specific case, we can identify the parameter vector ``\mathbf{\mu} = (1, \Delta, h/J)`` and the associated coefficient function as ``\mathbf{\theta}(\mathbf{\mu}) = (1, \mu_1, -\mu_2)``.
+In our specific case, we can identify the parameter vector ``\\mathbf{\\mu} = (1, \\Delta, h/J)`` and the associated coefficient function as ``\\mathbf{\\theta}(\\mathbf{\\mu}) = (1, \\mu_1, -\\mu_2)``.
 Hence we arrive at the following Hamiltonian implementation:
 
 ```@example xxz_ed; continued = true
@@ -100,12 +100,12 @@ H = xxz_chain(L)
 
 Now we can proceed by assembling the reduced basis.
 To that end we first choose a solver to find the lowest eigenvectors of ``H``, which in this case is the [`LOBPCG`](@ref) solver.
-Since the XXZ model as defined above harbors degenerate ground states at some parameter points, we need to target more than one eigenvector during truth solves using the `n_target` argument.
-Different eigenvalues are then distinguished up some tolerance `tol_degeneracy`.
+Since the XXZ model as defined above harbors degenerate ground states at some parameter points, we need to choose the right solver settings to account for that.
+To obtain only the ground state subspace, we set `n_target=1` and different eigenvalues are then distinguished up some tolerance `tol_degeneracy`.
 The general solver accuracy is set via the `tol` keyword argument:
 
 ```@example xxz_ed; continued = true
-lobpcg = LOBPCG(; n_target=L+1, tol_degeneracy=1e-4, tol=1e-9)
+lobpcg = LOBPCG(; n_target=1, tol_degeneracy=1e-4, tol=1e-9)
 ```
 
 Next, we need to restrict our surrogate to a certain domain in the ``(\Delta, h/J)`` parameter space and define a discrete grid of points on that domain.
@@ -132,7 +132,7 @@ With that, we gathered all elements to be able generate the reduced basis:
 
 ```@example xxz_ed; continued = true
 greedy = Greedy(; estimator=Residual(), tol=1e-3, init_from_rb=true)
-basis, h, info = assemble(H, grid_train, greedy, lobpcg, qrcomp) # TODO: show output!
+basis, h, info = assemble(H, grid_train, greedy, lobpcg, qrcomp)
 ```
 
 To close up the offline phase, we want to prepare an observable by compressing an [`AffineDecomposition`](@ref).
@@ -165,9 +165,10 @@ grid_online = RegularGrid(Δ_online, hJ_online)
 
 Instead of solving for the ground states of ``H``, we solve for the lowest eigenvectors of the reduced Hamiltonian in the online phase.
 Again, we need a solver, which in this case is [`FullDiagonalization`](@ref), i.e. a wrapper around `LinearAlgebra.eigen`.
+To use degeneracy settings that match `lobpcg` from above, we can use the matching constructor:
 
 ```@example xxz_ed; continued = true
-fulldiag = FullDiagonalization(; n_target=L+1, tol_degeneracy=1e-4)
+fulldiag = FullDiagonalization(lobpcg)
 ```
 
 Note that we use the same degeneracy settings as we do for the offline [`LOBPCG`](@ref) solver.

@@ -163,18 +163,28 @@ in [`ITensors`](https://itensor.github.io/ITensors.jl/stable/DMRG.html).
 
 # Fields
 
-- `n_target::Int=1`: see [`FullDiagonalization`](@ref)
-- `tol_degeneracy::Float64=0.0`: see [`FullDiagonalization`](@ref)
+- `n_states::Int=1`: see [`FullDiagonalization`](@ref).
+- `tol_degeneracy::Float64=0.0`: see [`FullDiagonalization`](@ref).
 - `sweeps::Sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)`: set DMRG sweep settings via `ITensors.Sweeps`.
 - `observer::Function=() -> DMRGObserver(; energy_tol=1e-9)`: set DMRG exit conditions. At each solve a new `ITensors.AbstractObserver` object is created.
 - `verbose::Bool=false`: if `true`, prints info about DMRG solve.
 """
 Base.@kwdef struct DMRG
-    n_target::Int = 1
+    n_states::Int = 1
     tol_degeneracy::Float64 = 0.0
     sweeps::Sweeps = default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)  # contain max. bond dimension and max. SVD cutoff
     observer::Function = () -> DMRGObserver(; energy_tol=1e-9)  # contains energy tol; is called on each solve to create <: AbstractObserver object
     verbose::Bool = false
+end
+
+"""
+    FullDiagonalization(dm::DMRG) 
+
+Same for [`DMRG`](@ref).
+"""
+function FullDiagonalization(dm::DMRG)
+    # Fix n_target=1 since DMRG solver cannot target excited states yet
+    FullDiagonalization(; n_target=1, tol_degeneracy=dm.tol_degeneracy)
 end
 
 """
@@ -193,22 +203,22 @@ end
     solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm::DMRG)
 
 Solve using [`DMRG`](@ref). When `nothing` is provided as an initial guess,
-`dm.n_target` random MPS are used.
+`dm.n_states` random MPS are used.
 """
 function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm::DMRG)
     if isnothing(Ψ₀)
         # last.(siteinds(...)) for two physical indices per tensor, last for non-primed index
         Ψ₀ = fill(
-            randomMPS(last.(siteinds(H.terms[1].mpo)); linkdims=dm.sweeps.maxdim[1]), dm.n_target,
+            randomMPS(last.(siteinds(H.terms[1].mpo)); linkdims=dm.sweeps.maxdim[1]), dm.n_states,
         )
     end
-    observer        = dm.observer()
-    H_full          = H(μ)
-    E₁, Ψ₁          = dmrg(H_full, Ψ₀[1], dm.sweeps; observer, outputlevel=0)
+    observer = dm.observer()
+    H_full = H(μ)
+    E₁, Ψ₁ = dmrg(H_full, Ψ₀[1], dm.sweeps; observer, outputlevel=0)
     values, vectors = [E₁,], [Ψ₁,]
 
     # Size of initial guess determines target multiplicity
-    if length(Ψ₀) > 1 && dm.n_target > 1 && dm.tol_degeneracy > 0.0
+    if length(Ψ₀) > 1 && dm.n_states > 1 && dm.tol_degeneracy > 0.0
         converging, n = true, 2
         while converging
             E_deg, Ψ_deg = dmrg(H_full, vectors, Ψ₀[n], dm.sweeps; observer, outputlevel=0)
@@ -229,7 +239,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
     if dm.verbose
         length(vectors) > 1 &&
             println("Degenerate point μ = $μ found with m = $(length(vectors))")
-        if iterations / n_target ≥ length(sweeps)
+        if iterations / dm.n_states ≥ length(sweeps)
             println("Number of DMRG sweeps has reached maximum: ", iterations)
         end
     end

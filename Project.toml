@@ -1,6 +1,6 @@
 name = "ReducedBasis"
 uuid = "f18afe42-61d0-402c-a0bd-58c747008192"
-authors = ["Michael F. Herbst <info@michael-herbst.com> and contributors"]
+authors = ["Michael F. Herbst <info@michael-herbst.com>", "Paul Brehmer <paul.brehmer@rwth-aachen.de>"]
 version = "0.1.0"
 
 [deps]

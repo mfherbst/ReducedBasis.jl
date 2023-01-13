@@ -25,19 +25,19 @@ end
 diag_lobpcg(A, X0; kwargs...) = lobpcg_hyper(A, X0; kwargs...)
 
 """
-Solver type for Locally Optimal Block Preconditioned Conjugate Gradient (LOBPCG).
+Solver type for the Locally Optimal Block Preconditioned Conjugate Gradient (LOBPCG).
 Currently uses the DFTK [`lobpcg_hyper`](https://github.com/JuliaMolSim/DFTK.jl/blob/master/src/eigen/diag_lobpcg_hyper.jl) implementation.
 
 # Fields
 
-- `n_target::Int=1`
-- `tol_degeneracy::Float64=0.0`
-- `tol::Float64=1e-9`
-- `maxiter::Int=300`
-- `n_ep_extra::Int=4`
-- `shift::Float64=-100`
-- `verbose::Bool=false`
-- `dense_fallback::Bool=true`
+- `n_target::Int=1`: see [`FullDiagonalization`](@ref).
+- `tol_degeneracy::Float64=0.0`: see [`FullDiagonalization`](@ref).
+- `tol::Float64=1e-9`: tolerance for residual norms.
+- `maxiter::Int=300`: maximal number of LOBPCG iterations.
+- `n_ep_extra::Int=4`: number of extra eigenpairs that are kept to improve convergence.
+- `shift::Float64=-100`: eigenvalue shift.
+- `verbose::Bool=false`: if `true`, print convergence messages.
+- `dense_fallback::Bool=true`: if `false`, also non-converged states will be accepted. Otherwise `LinearAlgebra.eigen` is used for non-converged iterations.
 - `maxdiagonal::Int=400`
 """
 Base.@kwdef struct LOBPCG
@@ -50,6 +50,15 @@ Base.@kwdef struct LOBPCG
     verbose::Bool = false
     dense_fallback::Bool = true
     maxdiagonal::Int = 400
+end
+
+"""
+    FullDiagonalization(lobpcg::LOBPCG) 
+
+Construct the [`FullDiagonalization`](@ref) solver with degeneracy settings matching `lobpcg`.
+"""
+function FullDiagonalization(lobpcg::LOBPCG)
+    FullDiagonalization(; n_target=lobpcg.n_target, tol_degeneracy=lobpcg.tol_degeneracy)
 end
 
 """
@@ -77,7 +86,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
     n_conv_check = size(Ψ₀, 2)
     iterations = 0
     chunks = 50  # TODO: set as kwarg?
-    n_target = lobpcg.n_target
+    n_last = lobpcg.n_target
     while iterations < lobpcg.maxiter
         res = diag_lobpcg(
             H_shifted,
@@ -90,23 +99,23 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
         )
         iterations += res.iterations
 
-        if lobpcg.n_target > 1 && lobpcg.tol_degeneracy > 0.0
-            n_target = findlast(abs.(res.λ .- res.λ[1]) .< lobpcg.tol_degeneracy)
+        if lobpcg.tol_degeneracy > 0.0
+            n_last = findlast(abs.(res.λ .- res.λ[lobpcg.n_target]) .< lobpcg.tol_degeneracy)
 
             # Tolerance of eigenpairs to converge fully
-            tol_conv = 10maximum(res.residual_norms[n_target:min(end, n_target + 1)])
+            tol_conv = 10maximum(res.residual_norms[n_last:min(end, n_last + 1)])
             tol_conv = clamp(tol_conv, 1e-4, 10)
-            n_conv_check = findlast(abs.(res.λ .- res.λ[1]) .< tol_conv)
+            n_conv_check = findlast(abs.(res.λ .- res.λ[lobpcg.n_target]) .< tol_conv)
         end
-        n_conv_check = max(n_target, n_conv_check)
+        n_conv_check = max(n_last, n_conv_check)
 
         if n_conv_check < size(res.X, 2) &&
            all(res.residual_norms[1:n_conv_check] .< lobpcg.tol)
             # All relevant eigenpairs are converged
-            lobpcg.verbose && println("Converged in $iterations iterations.")
+            lobpcg.verbose && println("converged in $iterations iterations")
             return (
-                vectors=[res.X[:, i] for i in 1:n_target],
-                values=res.λ[1:n_target] .- lobpcg.shift,
+                values=res.λ[1:n_last] .- lobpcg.shift,
+                vectors=[res.X[:, i] for i in 1:n_last],
                 converged=true,
                 iterations=iterations,
                 X=res.X,
@@ -128,26 +137,26 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
     end
 
     if !lobpcg.dense_fallback
-        @warn "Accepting non-converged state."
+        @warn "accepting non-converged state"
         return (
-            vectors=[res.X[:, i] for i in 1:n_target],
-            values=res.λ[1:n_target] .- lobpcg.shift,
+            values=res.λ[1:n_last] .- lobpcg.shift,
+            vectors=[res.X[:, i] for i in 1:n_last],
             converged=false,
             iterations=iterations,
             X=res.X,
             λ=res.λ .- shift,
         )
     else
-        lobpcg.verbose && @warn "Falling back to dense diagonalization."
+        lobpcg.verbose && @warn "falling back to dense diagonalization"
         val, vec = eigen(Hermitian(Matrix(H_shifted)), 1:size(Ψ₀, 2))
-        n_target = lobpcg.n_target
-        if lobpcg.n_target > 1 && lobpcg.tol_degeneracy > 0.0
-            n_target = findlast(abs.(val .- val[1]) .< lobpcg.tol_degeneracy)
+        n_last = lobpcg.n_target
+        if lobpcg.tol_degeneracy > 0.0
+            n_last = findlast(abs.(val .- val[lobpcg.n_target]) .< lobpcg.tol_degeneracy)
         end
 
         return (
-            vectors=[vec[:, i] for i in 1:n_target],
-            values=val[1:n_target] .- lobpcg.shift,
+            values=val[1:n_last] .- lobpcg.shift,
+            vectors=[vec[:, i] for i in 1:n_last],
             converged=true,
             iterations=iterations,
             X=vec,

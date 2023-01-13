@@ -52,13 +52,13 @@ using ReducedBasis
     )
     edcomp = EigenDecomposition(; cutoff=1e-7)
     dm_deg = DMRG(;
-        n_target=L+1,
+        n_states=L+1,
         tol_degeneracy=1e-4,
         sweeps=default_sweeps(),
         observer=() -> DMRGObserver(; energy_tol=1e-9),
     )
     dm_nondeg = DMRG(;
-        n_target=1,
+        n_states=1,
         tol_degeneracy=0.0,
         sweeps=default_sweeps(),
         observer=() -> DMRGObserver(; energy_tol=1e-9),
@@ -74,9 +74,7 @@ using ReducedBasis
     # Check values of L/2+1 magnetization plateaus for L=6
     function test_L6_magn_plateaus(basis::RBasis, h::AffineDecomposition, solver_truth)
         @testset "Correct magnetization values" begin
-            fd = FullDiagonalization(;
-                tol_degeneracy=solver_truth.tol_degeneracy, n_target=solver_truth.n_target
-            )
+            fd = FullDiagonalization(solver_truth)
             m = compress(M, basis)
             m_reduced = m([1])
             magnetization = map(grid_on) do μ
@@ -96,9 +94,7 @@ using ReducedBasis
     # Check if errors are low at solved parameter points
     function test_low_errors(basis::RBasis, info, solver_truth)
         @testset "Low errors at solved parameter points" begin
-            fd = FullDiagonalization(;
-                tol_degeneracy=solver_truth.tol_degeneracy, n_target=solver_truth.n_target
-            )
+            fd = FullDiagonalization(solver_truth)
             errors     = Float64[]
             values     = Float64[]
             vectors    = Matrix[]
@@ -119,7 +115,7 @@ using ReducedBasis
             # Low eigenvalue errors
             @test maximum((values .- values_fd) ./ values_fd) < sqrt(info.err_max)
             # If degenerate: low eigenvector errors (via projectors onto degenerate subspace)
-            if solver_truth.n_target > 1 && solver_truth.tol_degeneracy > 0.0
+            if solver_truth.n_states > 1 && solver_truth.tol_degeneracy > 0.0
                 vec_snapshots = reconstruct.(basis.snapshots)
                 B = hcat(vec_snapshots...) * basis.vectors
                 hilbert_vectors = map(φ -> B * φ, vectors)

@@ -61,12 +61,12 @@ The corresponding ground state will also be obtained in a tensor format, namely 
 This is achieved by `ITensors.dmrg` which is wrapped in the [`DMRG`](@ref) solver type:
 
 ```@example xxz_dmrg; continued = true
-dm = DMRG(; n_target=1, tol_degeneracy=0.0,
+dm = DMRG(; n_states=1, tol_degeneracy=0.0,
           sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000),
           observer=() -> DMRGObserver(; energy_tol=1e-9))
 ```
 
-While the implemented DMRG solver is capable of solving degenerate ground state, we here opt for non-degenerate settings (i.e. `n_target=1` and `tol_degeneracy=0.0`), since one encounters a ``L+1``-fold degeneracy on the parameter domain, where the degenerate DMRG solver can produce instable results for larger ``L``.
+While the implemented DMRG solver is capable of solving degenerate ground state, we here opt for non-degenerate settings (i.e. `n_states=1` and `tol_degeneracy=0.0`), since one encounters a ``L+1``-fold degeneracy on the parameter domain, where the degenerate DMRG solver can produce instable results for larger ``L``.
 
 As discussed in the last example, we need a way to orthogonalize the reduced basis.
 Due to the MPS format that the snapshots will have, we cannot use QR decompositions anymore and resort to a different method, [`EigenDecomposition`](@ref), featuring an eigenvalue decomposition of the snapshot overlap matrix:
@@ -103,7 +103,7 @@ m_reduced = m([1]) # hide
 hJ_online = range(first(hJ), last(hJ), 100) # hide
 grid_online = RegularGrid(Δ_online, hJ_online) # hide
 
-fulldiag = FullDiagonalization(; n_target=1, tol_degeneracy=0.0)  # hide
+fulldiag = FullDiagonalization(dm)  # hide
 magnetization = map(grid_online) do μ # hide
     _, φ_rb = solve(h, basis.metric, μ, fulldiag)  # hide
     sum(eachcol(φ_rb)) do u # hide
@@ -113,6 +113,26 @@ end # hide
 ```
 
 And at that point, we can continue as before since we have arrived at the online phase where we only operate in the low-dimensional reduced basis space, agnostic of the previously used solver method.
+We have to make sure, however, to choose matching degeneracy settings for the [`FullDiagonalization`](@ref) solver in the online phase, which we do via the matching constructor:
+
+```@example xxz_dmrg; continued = true
+fulldiag = FullDiagonalization(dm)
+```
+
+```@example xxz_dmrg; continued = true
+m_reduced = m([1]) # hide
+Δ_online = range(first(Δ), last(Δ), 100) # hide
+hJ_online = range(first(hJ), last(hJ), 100) # hide
+grid_online = RegularGrid(Δ_online, hJ_online) # hide
+
+magnetization = map(grid_online) do μ # hide
+    _, φ_rb = solve(h, basis.metric, μ, fulldiag) # hide
+    sum(eachcol(φ_rb)) do u # hide
+        abs(dot(u, m_reduced, u)) / size(φ_rb, 2) # hide
+    end # hide
+end # hide
+```
+
 In the same way as before, we perform the online calculations and arrive at the following magnetization plot:
 
 ```@example xxz_dmrg
