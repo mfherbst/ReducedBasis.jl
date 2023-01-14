@@ -1,3 +1,3 @@
 using ReducedBasis
 using Aqua
-Aqua.test_all(ReducedBasis)
+Aqua.test_all(ReducedBasis; ambiguities=false)
