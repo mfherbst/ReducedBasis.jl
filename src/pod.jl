@@ -6,7 +6,7 @@ Proper orthogonal decomposition assembly strategy.
 - `n_truth::Int=64`: number of included truth solves in the returned basis.
 - `verbose::Bool=true`: shows the truth solve progress if `true`.
 """
-Base.@kwdef struct POD
+@kwdef struct POD
     n_truth::Int = 64
     verbose::Bool = true
 end

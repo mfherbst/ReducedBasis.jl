@@ -40,7 +40,7 @@ Currently uses the DFTK [`lobpcg_hyper`](https://github.com/JuliaMolSim/DFTK.jl/
 - `dense_fallback::Bool=true`: if `false`, also non-converged states will be accepted. Otherwise `LinearAlgebra.eigen` is used for non-converged iterations.
 - `maxdiagonal::Int=400`
 """
-Base.@kwdef struct LOBPCG
+@kwdef struct LOBPCG
     n_target::Int = 1
     tol_degeneracy::Float64 = 0.0
     tol::Float64 = 1e-9

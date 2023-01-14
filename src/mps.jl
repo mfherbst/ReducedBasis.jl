@@ -36,7 +36,7 @@ of the basis overlap matrix. See also [`extend`](@ref).
 # Fields
 - `cutoff::Float64=1e-6`: cutoff for minimal eigenvalue accuracy.
 """
-Base.@kwdef struct EigenDecomposition
+@kwdef struct EigenDecomposition
     cutoff::Float64 = 1e-6
 end
 
@@ -177,7 +177,7 @@ in [`ITensors`](https://itensor.github.io/ITensors.jl/stable/DMRG.html).
 - `observer::Function=() -> DMRGObserver(; energy_tol=1e-9)`: set DMRG exit conditions. At each solve a new `ITensors.AbstractObserver` object is created.
 - `verbose::Bool=false`: if `true`, prints info about DMRG solve.
 """
-Base.@kwdef struct DMRG
+@kwdef struct DMRG
     n_states::Int = 1
     tol_degeneracy::Float64 = 0.0
     sweeps::Sweeps = default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)  # contain max. bond dimension and max. SVD cutoff

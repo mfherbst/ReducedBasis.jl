@@ -6,7 +6,7 @@ Solver type for full diagonalization using [`LinearAlgebra.eigen`](https://docs.
 - `n_target::Int=1`: the number of the targeted eigenvalue. If `n_target=1`, the degeneracy of the ground state is automatically determined up to `tol_degeneracy`. If `tol_degeneracy=0`, it determines the number of returned vectors per solve (also includes excited states).
 - `tol_degeneracy::Float64=0.0`: tolerance for distinguishing two eigenvalues. If `abs(λ₁ - λ₂) < tol_degeneracy`, the eigenvalues are added to the same degenerate subspace.
 """
-Base.@kwdef struct FullDiagonalization
+@kwdef struct FullDiagonalization
     n_target::Int = 1
     tol_degeneracy::Float64 = 0.0
 end

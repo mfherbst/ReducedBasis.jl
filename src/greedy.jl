@@ -33,7 +33,7 @@ Greedy reduced basis assembling strategy.
 - `init_from_rb::Bool=true`: if `true`, uses initial guesses from RB eigenvectors. See also [`estimate_gs`](@ref).
 - `verbose::Bool=true`: print information during assembly if `true`.
 """
-Base.@kwdef struct Greedy
+@kwdef struct Greedy
     estimator::ErrorEstimate
     tol::Float64       = 1e-3
     n_truth_max::Int   = 64

@@ -1,3 +1,5 @@
+import Base: @kwdef
+
 """
 Central type containing snapshots and associated objects that make a reduced basis.
 
@@ -105,7 +107,7 @@ Extension type for QR orthonormalization and compression. See [`extend`](@ref) f
 
 - `tol::Float64`: tolerance for compressing insignificant basis snapshots.
 """
-Base.@kwdef struct QRCompress
+@kwdef struct QRCompress
     tol::Float64 = 1e-10
 end
 
