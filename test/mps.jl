@@ -1,5 +1,6 @@
 using Test, LinearAlgebra, ITensors, SparseArrays
 using ReducedBasis
+using ReducedBasis: reconstruct
 
 @testset "MPS offline & online phase: XXZ chain" begin
     function xxz_chain(sts::IndexSet; kwargs...)
