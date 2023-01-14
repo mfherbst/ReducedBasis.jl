@@ -1,3 +1,3 @@
 using ReducedBasis
 using Aqua
-Aqua.test_all(DFTK)
+Aqua.test_all(ReducedBasis)
