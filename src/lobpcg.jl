@@ -70,11 +70,11 @@ column vectors.
 """
 function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg::LOBPCG)
     if isnothing(Ψ₀)  # Build initial guess if needed
-        Ψ₀ = Matrix(
-            qr(randn(ComplexF64, size(H, 1), lobpcg.n_target + lobpcg.n_ep_extra)).Q,
-        )
+        n_states = lobpcg.n_target + lobpcg.n_ep_extra
+        Ψ₀ = Matrix(qr(randn(ComplexF64, size(H, 1), n_states)).Q)
     else
-        @assert size(Ψ₀, 1) == size(H, 1) size(Ψ₀)
+        @assert size(Ψ₀, 1) == size(H, 1)
+        # TODO Why is this commented out?
         # @assert size(Ψ₀, 2) ≥ lobpcg.n_target + lobpcg.n_ep_extra
     end
 

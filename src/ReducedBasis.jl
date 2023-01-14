@@ -28,7 +28,7 @@ include("full_diag.jl")
 include("lobpcg.jl")
 
 export EigenDecomposition, ApproxMPO, DMRG
-export reconstruct, default_sweeps
+export default_sweeps
 include("mps.jl")
 
 export InfoCollector

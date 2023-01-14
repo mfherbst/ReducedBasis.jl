@@ -10,6 +10,11 @@ Explicitly compute Hilbert-space-dimensional vector by reconstructing all MPS co
     such that the explicit reconstruction is only possible for small systems.
 """
 function reconstruct(mps::MPS)
+    # TODO This function is just a conversion to Vector, so it should be a vector
+    #      constructor or a convert(Vector, x) routine.
+    #
+    # Should be upstreamed.
+
     sites  = siteinds(mps)
     vec    = zeros(eltype(mps[1]), Tuple(dim(s) for s in sites))
     combos = Iterators.product(Tuple(1:dim(s) for s in sites)...)
@@ -87,13 +92,13 @@ the basis assembly.
 Includes the exact operator sum in `opsum` to be able to produce efficient sums of MPOs
 when constructing [`AffineDecomposition`](@ref) sums explicitly.
 """
-struct ApproxMPO
+@kwdef struct ApproxMPO
     mpo::MPO
     opsum::Sum{Scaled{ComplexF64,Prod{Op}}}
-    cutoff::Float64
-    maxdim::Int
-    mindim::Int
-    truncate::Bool
+    cutoff::Float64 = 1e-9
+    maxdim::Int = 1000
+    mindim::Int = 1
+    truncate::Bool = true
 end
 """
     ApproxMPO(mpo::MPO, opsum; <keyword arguments>)
@@ -109,8 +114,8 @@ Construct an `ApproxMPO` with truncation default settings.
 - `mindim::Int=1`: minimal bond dimension.
 - `truncate::Bool=true`: disables all truncate if set to `false`.
 """
-function ApproxMPO(mpo::MPO, opsum; cutoff=1e-9, maxdim=1000, mindim=1, truncate=true)
-    ApproxMPO(mpo, opsum, cutoff, maxdim, mindim, truncate)
+function ApproxMPO(mpo::MPO, opsum; kwargs...)
+    ApproxMPO(; mpo, opsum, kwargs...)
 end
 
 """
@@ -120,6 +125,8 @@ Apply `o.mpo` to `mps` using the truncation arguments contained in `o`.
 """
 function Base.:*(o::ApproxMPO, mps::MPS)
     apply(
+          # TODO If the extra args are just collected in a kwarg struct, they can just be
+          #      passed through, which is more general and extensible
         o.mpo, mps; cutoff=o.cutoff, maxdim=o.maxdim, mindim=o.mindim, truncate=o.truncate,
     )
 end
@@ -143,6 +150,7 @@ Compute sum with `ApproxMPO`s using the exact `ITensors` operator sum.
 """
 function (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
     θ = ad.coefficient_map(μ)
+    # TODO This should work even without making a list explicitly
     opsum = sum([c * term.opsum for (c, term) in zip(θ, ad.terms)])
     MPO(opsum, last.(siteinds(ad.terms[1].mpo)))
 end

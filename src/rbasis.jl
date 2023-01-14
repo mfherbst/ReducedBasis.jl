@@ -16,7 +16,7 @@ is frequently needed, both the `snapshot_overlaps` ``\\Upsilon^\\dagger \\Upsilo
 and the `metric` ``B^\\dagger B`` are stored with generic floating-point type `T`.
 """
 struct RBasis{V,T<:Number,P,N}
-    snapshots::AbstractVector{V}
+    snapshots::AbstractVector{V}  # TODO Short comment on what these are
     parameters::Vector{P}
     vectors::N
     snapshot_overlaps::Matrix{T}
@@ -116,6 +116,9 @@ Extend the reduced basis by one snapshot without any orthogonalization or
 compression procedure.
 """
 function extend(basis::RBasis, new_snapshot, μ, ::NoCompress)
+    # TODO What grinds me here is that new_snapshot is singular,
+    #      but actually contains a vector of stuff. Either we make this plural
+    #      or we type-annotate by ::AbstractVector to make this clear
     overlaps   = extend_overlaps(basis.snapshot_overlaps, basis.snapshots, new_snapshot)
     snapshots  = append!(copy(basis.snapshots), new_snapshot)
     parameters = append!(copy(basis.parameters), fill(μ, length(new_snapshot)))
@@ -142,9 +145,9 @@ function extend(basis::RBasis, new_snapshot, μ, qrcomp::QRCompress)
     keep        = findlast(max_per_row .> qrcomp.tol)
     isnothing(keep) && (return basis, keep)
 
-    v          = [fact.Q[:, i] for i in 1:keep]
-    v_norm     = abs(fact.R[keep, keep])
-    new_basis, = extend(basis, v, μ, NoCompress())
+    v         = [fact.Q[:, i] for i in 1:keep]
+    v_norm    = abs(fact.R[keep, keep])
+    new_basis = extend(basis, v, μ, NoCompress())
 
     new_basis, keep, v_norm
 end

@@ -16,14 +16,15 @@ function FullDiagonalization(fd::FullDiagonalization)
 end
 
 """
-    solve(H::AffineDecomposition, μ, _, fd::FullDiagonalization)
+    solve(H::AffineDecomposition, μ, Ψ₀, fd::FullDiagonalization)
 
 Solve Hamiltonian for lowest eigenvalues and eigenvectors at parameter point `μ`
 using  [`FullDiagonalization`](@ref).
 """
-function solve(H::AffineDecomposition, μ, _, fd::FullDiagonalization)
+function solve(H::AffineDecomposition, μ, Ψ₀, fd::FullDiagonalization)
     H_matrix = Hermitian(H(μ))  # Hamiltonians are Hermitian by assumption
     if issparse(H_matrix)  # Convert to dense matrix if sparse
+        # TODO This is not super general and fails for other non-dense data structures
         H_matrix = Hermitian(Matrix(H_matrix))
     end
 

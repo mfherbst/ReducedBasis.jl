@@ -35,10 +35,10 @@ Greedy reduced basis assembling strategy.
 """
 Base.@kwdef struct Greedy
     estimator::ErrorEstimate
-    tol::Float64 = 1e-3
-    n_truth_max::Int = 64
-    init_from_rb::Bool = true
-    verbose::Bool = true
+    tol::Float64       = 1e-3
+    n_truth_max::Int   = 64
+    init_from_rb::Bool = true   # TODO More general mechanism ... The init could come from everywhere, not just the rb (could be a different rb, random etc.)
+    verbose::Bool      = true
 end
 
 """
@@ -86,6 +86,7 @@ function assemble(
     basis   = RBasis(truth.vectors, fill(μ₁, length(truth.vectors)), I, BᵀB, BᵀB)
     h_cache = HamiltonianCache(H, basis)
     info    = (; iteration=1, err_max=NaN, μ=μ₁, basis, h_cache, t=t_init, state=:iterate)
+    # TODO Why is basis not part of the info ?
     callback(info)
 
     for n in 2:(greedy.n_truth_max)

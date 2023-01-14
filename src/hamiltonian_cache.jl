@@ -30,6 +30,7 @@ function HamiltonianCache(H::AffineDecomposition, basis::RBasis)
     ΨHHΨ = reshape(
         [overlap_matrix(v1, v2) for v1 in HΨ for v2 in HΨ], (n_terms(H), n_terms(H))
     )
+    # TODO What is matel ?
     h = AffineDecomposition(
         [basis.vectors' * matel * basis.vectors for matel in ΨHΨ], H.coefficient_map
     )
