@@ -147,9 +147,9 @@ function extend(basis::RBasis, new_snapshot, μ, qrcomp::QRCompress)
     keep        = findlast(max_per_row .> qrcomp.tol)
     isnothing(keep) && (return basis, keep)
 
-    v         = [fact.Q[:, i] for i in 1:keep]
-    v_norm    = abs(fact.R[keep, keep])
-    new_basis = extend(basis, v, μ, NoCompress())
+    v            = [fact.Q[:, i] for i in 1:keep]
+    v_norm       = abs(fact.R[keep, keep])
+    new_basis, _ = extend(basis, v, μ, NoCompress())
 
     new_basis, keep, v_norm
 end
