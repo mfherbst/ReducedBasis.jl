@@ -27,17 +27,19 @@ Greedy reduced basis assembling strategy.
 
 # Fields
 
-- `estimator::ErrorEstimate`: error estimate used in greedy condition. See also [`estimate_error`](@ref)
+- `estimator::ErrorEstimate`: error estimate used in greedy condition.
+  See also [`estimate_error`](@ref)
 - `tol::Float64=1e-3`: tolerance for error estimate, below which the assembly is terminated.
 - `n_truth_max::Int=64`: maximal number of truth solves to be taken up in the basis.
-- `init_from_rb::Bool=true`: if `true`, uses initial guesses from RB eigenvectors. See also [`estimate_gs`](@ref).
+- `init_from_rb::Bool=true`: if `true`, uses initial guesses from RB eigenvectors.
+  See also [`estimate_gs`](@ref).
 - `verbose::Bool=true`: print information during assembly if `true`.
 """
 @kwdef struct Greedy
     estimator::ErrorEstimate
     tol::Float64       = 1e-3
     n_truth_max::Int   = 64
-    init_from_rb::Bool = true   # TODO More general mechanism ... The init could come from everywhere, not just the rb (could be a different rb, random etc.)
+    init_from_rb::Bool = true   # TODO: More general mechanism
     verbose::Bool      = true
 end
 
@@ -64,21 +66,17 @@ Assemble an `RBasis` using the greedy strategy and any truth solving method.
 
 - `H::AffineDecomposition`: Hamiltonian for which a reduced basis is assembled.
 - `grid`: parameter grid that defines the parameter domain.
-- `greedy::Greedy`: greedy strategy containing assembly parameters. See also [`Greedy`](@ref).
+- `greedy::Greedy`: greedy strategy containing assembly parameters.
+  See also [`Greedy`](@ref).
 - `solver_truth`: solving method for obtaining ground state snapshots.
 - `compressalg`: compression method for orthogonalization, etc. See also [`extend`](@ref).
-- `solver_online=FullDiagonalization(solver_truth)`: solving method that is used for the RB generalized eigenvalue problem.
-- `callback=print_callback`: callback function that operates on the iteration state during assembly. It is possible to chain multiple callback functions using `∘`.
+- `solver_online=FullDiagonalization(solver_truth)`: solving method that is used for the RB
+  generalized eigenvalue problem.
+- `callback=print_callback`: callback function that operates on the iteration state during
+  assembly. It is possible to chain multiple callback functions using `∘`.
 """
-function assemble(
-    H::AffineDecomposition,
-    grid,
-    greedy::Greedy,
-    solver_truth,
-    compressalg;
-    solver_online=FullDiagonalization(solver_truth),
-    callback=print_callback,
-)
+function assemble(H::AffineDecomposition, grid, greedy::Greedy, solver_truth, compressalg;
+                  solver_online=FullDiagonalization(solver_truth), callback=print_callback)
     t_init  = time_ns()  # TODO: how to outsource this time measurement to callback?
     μ₁      = grid[1]
     truth   = solve(H, μ₁, nothing, solver_truth)
@@ -86,7 +84,6 @@ function assemble(
     basis   = RBasis(truth.vectors, fill(μ₁, length(truth.vectors)), I, BᵀB, BᵀB)
     h_cache = HamiltonianCache(H, basis)
     info    = (; iteration=1, err_max=NaN, μ=μ₁, basis, h_cache, t=t_init, state=:iterate)
-    # TODO Why is basis not part of the info ?
     callback(info)
 
     for n in 2:(greedy.n_truth_max)

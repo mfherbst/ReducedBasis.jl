@@ -10,7 +10,8 @@ and the `coefficient_map<:Function` implements the ``\\alpha_r(\\mathbf{\\mu})``
 coefficient functions.
 
 Note that ``r = (r_1, \\dots, r_d)`` generally is a multi-index and as such `terms`
-can be a ``d``-dimensional array. Correspondingly, `coefficient_map` maps parameter points ``\\mathbf{\\mu}`` to an `size(terms)` array.
+can be a ``d``-dimensional array. Correspondingly, `coefficient_map` maps parameter points
+``\\mathbf{\\mu}`` to an `size(terms)` array.
 """
 struct AffineDecomposition{T<:AbstractArray,F<:Function}
     terms::T
@@ -24,25 +25,12 @@ struct AffineDecomposition{T<:AbstractArray,F<:Function}
     end
 end
 
-"""
-    Base.length(ad::AffineDecomposition)
-
-Return `length` of affine terms.
-"""
 Base.length(ad::AffineDecomposition) = length(ad.terms[1])
-"""
-    size(ad::AffineDecomposition)
-    size(ad::AffineDecomposition, i::Int)
 
-Return `size` of affine terms. Alternatively, return size of specified dimension `i`
-"""
 Base.size(ad::AffineDecomposition) = size(ad.terms[1])
-Base.size(ad::AffineDecomposition, i::Int) = size(ad.terms[1], i)
-"""
-    n_terms(ad::AffineDecomposition)
 
-Return the number ``R`` of affine terms.
-"""
+Base.size(ad::AffineDecomposition, i::Int) = size(ad.terms[1], i)
+
 n_terms(ad::AffineDecomposition) = length(ad.terms)
 
 # TODO: fix docs here
@@ -62,6 +50,7 @@ corresponding to ``o = B^\\dagger O B``.
 function compress(ad::AffineDecomposition, basis::RBasis)
     AffineDecomposition(compress.(ad.terms, Ref(basis)), ad.coefficient_map)
 end
+
 """
     compress(M::AbstractMatrix, basis::RBasis)
 

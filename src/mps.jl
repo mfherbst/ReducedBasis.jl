@@ -10,8 +10,8 @@ Explicitly compute Hilbert-space-dimensional vector by reconstructing all MPS co
     such that the explicit reconstruction is only possible for small systems.
 """
 function reconstruct(mps::MPS)
-    # TODO This function is just a conversion to Vector, so it should be a vector
-    #      constructor or a convert(Vector, x) routine.
+    # TODO: This function is just a conversion to Vector, so it should be a vector
+    #       constructor or a convert(Vector, x) routine.
     #
     # Should be upstreamed.
 
@@ -100,6 +100,7 @@ when constructing [`AffineDecomposition`](@ref) sums explicitly.
     mindim::Int = 1
     truncate::Bool = true
 end
+
 """
     ApproxMPO(mpo::MPO, opsum; <keyword arguments>)
     
@@ -130,17 +131,9 @@ function Base.:*(o::ApproxMPO, mps::MPS)
         o.mpo, mps; cutoff=o.cutoff, maxdim=o.maxdim, mindim=o.mindim, truncate=o.truncate,
     )
 end
-"""
-    length(o::ApproxMPO)
 
-Return length of `o.mpo`.
-"""
 Base.length(o::ApproxMPO) = length(o.mpo)
-"""
-    size(o::ApproxMPO)
 
-Return size of `o.mpo`.
-"""
 Base.size(o::ApproxMPO) = size(o.mpo)
 
 """
@@ -150,8 +143,7 @@ Compute sum with `ApproxMPO`s using the exact `ITensors` operator sum.
 """
 function (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
     θ = ad.coefficient_map(μ)
-    # TODO This should work even without making a list explicitly
-    opsum = sum([c * term.opsum for (c, term) in zip(θ, ad.terms)])
+    opsum = sum(c * term.opsum for (c, term) in zip(θ, ad.terms))
     MPO(opsum, last.(siteinds(ad.terms[1].mpo)))
 end
 
@@ -173,15 +165,17 @@ in [`ITensors`](https://itensor.github.io/ITensors.jl/stable/DMRG.html).
 
 - `n_states::Int=1`: see [`FullDiagonalization`](@ref).
 - `tol_degeneracy::Float64=0.0`: see [`FullDiagonalization`](@ref).
-- `sweeps::Sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)`: set DMRG sweep settings via `ITensors.Sweeps`.
-- `observer::Function=() -> DMRGObserver(; energy_tol=1e-9)`: set DMRG exit conditions. At each solve a new `ITensors.AbstractObserver` object is created.
+- `sweeps::Sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)`: set DMRG sweep
+  settings via `ITensors.Sweeps`.
+- `observer::Function=() -> DMRGObserver(; energy_tol=1e-9)`: set DMRG exit conditions.
+  At each solve a new `ITensors.AbstractObserver` object is created.
 - `verbose::Bool=false`: if `true`, prints info about DMRG solve.
 """
 @kwdef struct DMRG
     n_states::Int = 1
     tol_degeneracy::Float64 = 0.0
-    sweeps::Sweeps = default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)  # contain max. bond dimension and max. SVD cutoff
-    observer::Function = () -> DMRGObserver(; energy_tol=1e-9)  # contains energy tol; is called on each solve to create <: AbstractObserver object
+    sweeps::Sweeps = default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)
+    observer::Function = () -> DMRGObserver(; energy_tol=1e-9)
     verbose::Bool = false
 end
 
@@ -198,7 +192,8 @@ end
 """
     default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)
 
-Return default `ITensors.Sweeps` object for DMRG solves, containing decreasing noise and increasing maximal bond dimension ramps.
+Return default `ITensors.Sweeps` object for DMRG solves, containing decreasing noise and
+increasing maximal bond dimension ramps.
 """
 function default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)
     sweeps = Sweeps(100; cutoff=cutoff_max)
@@ -216,9 +211,8 @@ Solve using [`DMRG`](@ref). When `nothing` is provided as an initial guess,
 function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm::DMRG)
     if isnothing(Ψ₀)
         # last.(siteinds(...)) for two physical indices per tensor, last for non-primed index
-        Ψ₀ = fill(
-            randomMPS(last.(siteinds(H.terms[1].mpo)); linkdims=dm.sweeps.maxdim[1]), dm.n_states,
-        )
+        Ψ₀ = fill(randomMPS(last.(siteinds(H.terms[1].mpo)); linkdims=dm.sweeps.maxdim[1]),
+                  dm.n_states)
     end
     observer = dm.observer()
     H_full = H(μ)

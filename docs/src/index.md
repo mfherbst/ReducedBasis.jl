@@ -5,7 +5,7 @@ uses the [reduced basis method](http://dx.doi.org/10.1007/978-3-319-22470-1) (RB
 to accelerate the solution of a parametrized eigenvalue problems across the parameter domain.
 
 In the RBM approach, a surrogate model is assembled by projecting the full
-problem onto a basis consisting of only a few tens of parameter snapshots, the
+problem onto a basis consisting of only a few tens of parameter snapshots.
 The package focuses on a greedy strategy that selects snapshots by maximally
 reducing the estimated error with each additional snapshot.
 Once the RBM surrogate is assembled, physical observables can be computed for
@@ -20,6 +20,6 @@ problems with a low-dimensional parameter space.
 Key steps of the RBM procedure, such as the snapshot solving method, error
 estimates or the assembly strategy, can therefore be easily customized.
 Moreover, the package integrates with [ITensors.jl](https://itensor.github.io/ITensors.jl/stable/)
-that allows the use of tensor network methods, 
+that allows the use of tensor network methods,
 in particular the [density matrix renormalization group](https://tensornetwork.org/mps/algorithms/dmrg/)
 using matrix product states.

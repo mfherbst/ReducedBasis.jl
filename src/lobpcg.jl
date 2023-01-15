@@ -37,7 +37,8 @@ Currently uses the DFTK [`lobpcg_hyper`](https://github.com/JuliaMolSim/DFTK.jl/
 - `n_ep_extra::Int=4`: number of extra eigenpairs that are kept to improve convergence.
 - `shift::Float64=-100`: eigenvalue shift.
 - `verbose::Bool=false`: if `true`, print convergence messages.
-- `dense_fallback::Bool=true`: if `false`, also non-converged states will be accepted. Otherwise `LinearAlgebra.eigen` is used for non-converged iterations.
+- `dense_fallback::Bool=true`: if `false`, also non-converged states will be accepted.
+  Otherwise `LinearAlgebra.eigen` is used for non-converged iterations.
 - `maxdiagonal::Int=400`
 """
 @kwdef struct LOBPCG
@@ -45,7 +46,7 @@ Currently uses the DFTK [`lobpcg_hyper`](https://github.com/JuliaMolSim/DFTK.jl/
     tol_degeneracy::Float64 = 0.0
     tol::Float64 = 1e-9
     maxiter::Int = 300
-    n_ep_extra::Int = 4 # Extra eigenpairs to improve convergence rate
+    n_ep_extra::Int = 4
     shift::Float64 = -100
     verbose::Bool = false
     dense_fallback::Bool = true
@@ -55,7 +56,8 @@ end
 """
     FullDiagonalization(lobpcg::LOBPCG) 
 
-Construct the [`FullDiagonalization`](@ref) solver with degeneracy settings matching `lobpcg`.
+Construct the [`FullDiagonalization`](@ref) solver with degeneracy settings matching
+`lobpcg`.
 """
 function FullDiagonalization(lobpcg::LOBPCG)
     FullDiagonalization(; n_target=lobpcg.n_target, tol_degeneracy=lobpcg.tol_degeneracy)
@@ -74,8 +76,9 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
         Ψ₀ = Matrix(qr(randn(ComplexF64, size(H, 1), n_states)).Q)
     else
         @assert size(Ψ₀, 1) == size(H, 1)
-        # TODO Why is this commented out?
+        # TODO: Why is this commented out?
         # @assert size(Ψ₀, 2) ≥ lobpcg.n_target + lobpcg.n_ep_extra
+        # -> estimate_gs(...) might not deliver such size(Ψ₀, 2); add extra columns if needed?
     end
 
     # Assemble Hamiltonian for parameter value μ

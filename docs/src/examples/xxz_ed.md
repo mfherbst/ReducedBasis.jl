@@ -74,8 +74,8 @@ function to_global(op::M, L::Int, i::Int) where {M<:AbstractMatrix}
 end
 ```
 
-To be able to create an [`AffineDecomposition`](@ref), we first need to identify the terms ``H_q`` and the coefficient functions ``\\theta_q(\\mathbf{\\mu})``.
-In our specific case, we can identify the parameter vector ``\\mathbf{\\mu} = (1, \\Delta, h/J)`` and the associated coefficient function as ``\\mathbf{\\theta}(\\mathbf{\\mu}) = (1, \\mu_1, -\\mu_2)``.
+To be able to create an [`AffineDecomposition`](@ref), we first need to identify the terms ``H_q`` and the coefficient functions ``\\theta_q({\\bm{\\mu})``.
+In our specific case, we can identify the parameter vector ``\\bm{\\mu} = (1, \\Delta, h/J)`` and the associated coefficient function as ``\\bm{\\theta}(\\bm{\\mu}) = (1, \\mu_1, -\\mu_2)``.
 Hence we arrive at the following Hamiltonian implementation:
 
 ```@example xxz_ed; continued = true

@@ -18,8 +18,8 @@ Assemble basis using [`POD`](@ref). Only ED solvers such as
 [`FullDiagonalization`](@ref) and [`LOBPCG`](@ref) are supported.
 """
 function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
-    # TODO This should be solved by a type annotation and an appropriate abstract type
-    #      and not an assertion
+    # TODO: This should be solved by a type annotation and an appropriate abstract type
+    #       and not an assertion
     (solver_truth isa DMRG) && ArgumentError("Only ED solvers are supported.")
     @assert pod.n_truth ≤ length(grid) && pod.n_truth ≤ size(H, 1)
 

@@ -1,10 +1,16 @@
 """
-Solver type for full diagonalization using [`LinearAlgebra.eigen`](https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/#LinearAlgebra.eigen).
+Solver type for full diagonalization using
+[`LinearAlgebra.eigen`](https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/#LinearAlgebra.eigen).
 
 # Fields
 
-- `n_target::Int=1`: the number of the targeted eigenvalue. If `n_target=1`, the degeneracy of the ground state is automatically determined up to `tol_degeneracy`. If `tol_degeneracy=0`, it determines the number of returned vectors per solve (also includes excited states).
-- `tol_degeneracy::Float64=0.0`: tolerance for distinguishing two eigenvalues. If `abs(λ₁ - λ₂) < tol_degeneracy`, the eigenvalues are added to the same degenerate subspace.
+- `n_target::Int=1`: the number of the targeted eigenvalue. If `n_target=1`,
+  the degeneracy of the ground state is automatically determined up to `tol_degeneracy`.
+  If `tol_degeneracy=0`, it determines the number of returned vectors per solve
+  (also includes excited states).
+- `tol_degeneracy::Float64=0.0`: tolerance for distinguishing two eigenvalues.
+  If `abs(λ₁ - λ₂) < tol_degeneracy`, the eigenvalues are added to the same
+  degenerate subspace.
 """
 @kwdef struct FullDiagonalization
     n_target::Int = 1
@@ -36,6 +42,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀, fd::FullDiagonalization)
 
     (values=Λ[1:n_last], vectors=[Ψ[:, i] for i in 1:n_last])
 end
+
 """
     solve(h::AffineDecomposition, b::Matrix, μ, fd::FullDiagonalization)
     
