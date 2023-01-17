@@ -132,7 +132,8 @@ With that, we gathered all elements to be able generate the reduced basis:
 
 ```@example xxz_ed; continued = true
 greedy = Greedy(; estimator=Residual(), tol=1e-3, init_from_rb=true)
-basis, h, info = assemble(H, grid_train, greedy, lobpcg, qrcomp)
+info = assemble(H, grid_train, greedy, lobpcg, qrcomp)
+basis = info.basis; h = info.h_cache.h;
 ```
 
 To close up the offline phase, we want to prepare an observable by compressing an [`AffineDecomposition`](@ref).

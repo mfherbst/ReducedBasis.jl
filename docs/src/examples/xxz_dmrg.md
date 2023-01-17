@@ -85,7 +85,8 @@ greedy = Greedy(; estimator=Residual(), n_truth_max=22, init_from_rb=true) # hid
 Now with different types for `H`, the solver and the orthogonalizer, we call `assemble` using the `greedy` strategy and training grid from the last example:
 
 ```@example xxz_dmrg; continued = true
-basis, h, info = assemble(H, grid_train, greedy, dm, edcomp)
+info = assemble(H, grid_train, greedy, dm, edcomp)
+basis = info.basis; h = info.h_cache.h;
 ```
 
 The returned `basis` now has snapshot vectors of `ITensors.MPS` type, which we have to keep in mind when we want to compress observables.

@@ -114,6 +114,18 @@ Extension type for QR orthonormalization and compression. See [`extend`](@ref) f
 end
 
 """
+Extension type for orthogonalization and compression using eigenvalue decomposition
+of the basis overlap matrix. See also [`extend`](@ref).
+
+# Fields
+
+- `cutoff::Float64=1e-6`: cutoff for minimal eigenvalue accuracy.
+"""
+@kwdef struct EigenDecomposition
+    cutoff::Float64 = 1e-6
+end
+
+"""
     extend(basis::RBasis, new_snapshot, μ, ::NoCompress)
 
 Extend the reduced basis by one snapshot without any orthogonalization or
@@ -124,11 +136,12 @@ function extend(basis::RBasis, new_snapshot::AbstractVector, μ, ::NoCompress)
     snapshots  = append!(copy(basis.snapshots), new_snapshot)
     parameters = append!(copy(basis.parameters), fill(μ, length(new_snapshot)))
 
-    RBasis(snapshots, parameters, I, overlaps, overlaps), length(new_snapshot)
+    (; basis=RBasis(snapshots, parameters, I, overlaps, overlaps),
+       keep=length(new_snapshot))
 end
 
 """
-    extend(basis::RBasis, new_snapshot, μ, qrcomp::QRCompress)
+    extend(basis::RBasis, new_snapshot::AbstractVector, μ, qrcomp::QRCompress)
 
 Extend using QR orthonormalization and compression.
 
@@ -140,16 +153,60 @@ the `qrcomp.tol` tolerance are dropped.
 function extend(basis::RBasis, new_snapshot::AbstractVector, μ, qrcomp::QRCompress)
     B    = hcat(basis.snapshots...)
     Ψ    = hcat(new_snapshot...)
-    fact = qr(Ψ - B * (cholesky(basis.metric) \ (B' * Ψ)), Val(true))  # pivoted QR
+    fact = qr(Ψ - B * (cholesky(basis.metric) \ (B' * Ψ)),  # pivoted QR
+              VERSION < v"1.7" ? Val(true) : ColumnNorm())  # avoid deprecation warning 
 
     # Keep orthogonalized vectors of significant norm
     max_per_row = dropdims(maximum(abs, fact.R; dims=2); dims=2)
     keep        = findlast(max_per_row .> qrcomp.tol)
-    isnothing(keep) && (return basis, keep)
+    isnothing(keep) && (return (; basis, keep))
 
-    v            = [fact.Q[:, i] for i in 1:keep]
-    v_norm       = abs(fact.R[keep, keep])
-    new_basis, _ = extend(basis, v, μ, NoCompress())
+    v      = [fact.Q[:, i] for i in 1:keep]
+    v_norm = abs(fact.R[keep, keep])
+    ext    = extend(basis, v, μ, NoCompress())
 
-    new_basis, keep, v_norm
+    (; basis=ext.basis, keep, v_norm)
+end
+
+"""
+    extend(basis::RBasis, new_snapshot::AbstractVector, μ, ed::EigenDecomposition)
+
+Extend the reduced basis by orthonormalizing and compressing via eigenvalue decomposition.
+
+The overlap matrix ``S`` in `basis.snapshot_overlaps` is eigenvalue decomposed
+``S = U^\\dagger \\Lambda U`` and orthonormalized by computing the vector coefficients
+``V = U \\Lambda^{-1/2}``. Modes with an relative squared eigenvalue error smaller than
+`ed.cutoff` are dropped.
+"""
+function extend(basis::RBasis, new_snapshot::AbstractVector, μ, ed::EigenDecomposition)
+    overlaps = extend_overlaps(basis.snapshot_overlaps, basis.snapshots, new_snapshot)
+
+    # Orthonormalization via eigenvalue decomposition
+    Λ, U = eigen(Hermitian(overlaps))  # Hermitian to automatically sort by smallest λ
+    λ_error_trunc = 0.0
+    keep = 1
+    if !iszero(ed.cutoff)
+        λ²_psums      = reverse(cumsum(Λ.^2))  # Reverse to put largest eigenvector sum first
+        λ²_errors     = @. sqrt(λ²_psums / λ²_psums[1])
+        idx_trunc     = findlast(err -> err > ed.cutoff, λ²_errors)
+        λ_error_trunc = λ²_errors[idx_trunc]
+        keep          = idx_trunc - dimension(basis)
+        if keep ≤ 0  # Return old basis, if no significant snapshots can be added
+            return (; basis, keep, λ_error_trunc, λ_min=minimum(Λ))
+        end
+
+        if keep != length(new_snapshot)  # Truncate/compress
+            Λ = Λ[1:idx_trunc]
+            U = U[1:idx_trunc, 1:idx_trunc]
+            overlaps = overlaps[1:idx_trunc, 1:idx_trunc]
+            λ_error_trunc = λ²_errors[idx_trunc + 1]
+        end
+    end
+    snapshots   = append!(copy(basis.snapshots), new_snapshot[1:keep])  # TODO: use ordering of Λ
+    parameters  = append!(copy(basis.parameters), fill(μ, keep))
+    vectors_new = U * Diagonal(1 ./ sqrt.(abs.(Λ)))
+
+    (; basis=RBasis(snapshots, parameters, vectors_new,
+                    overlaps, vectors_new' * overlaps * vectors_new),
+       keep, λ_error_trunc, λ_min=minimum(Λ))
 end

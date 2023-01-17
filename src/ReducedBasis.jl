@@ -11,7 +11,7 @@ export RegularGrid
 export bounds, in_bounds, shift
 include("grid.jl")
 
-export RBasis, NoCompress, QRCompress
+export RBasis, NoCompress, QRCompress, EigenDecomposition
 export dimension, n_truthsolve, multiplicity, overlap_matrix, extend
 include("rbasis.jl")
 
@@ -27,7 +27,7 @@ export solve
 include("full_diag.jl")
 include("lobpcg.jl")
 
-export EigenDecomposition, ApproxMPO, DMRG
+export ApproxMPO, DMRG
 export default_sweeps
 include("mps.jl")
 
@@ -36,7 +36,7 @@ export print_callback
 include("callback.jl")
 
 export Greedy, ErrorEstimate, Residual
-export estimate_error, assemble, estimate_gs
+export estimate_error, assemble, interpolate
 include("greedy.jl")
 
 export POD

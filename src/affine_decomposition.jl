@@ -52,11 +52,21 @@ function compress(ad::AffineDecomposition, basis::RBasis)
 end
 
 """
-    compress(M::AbstractMatrix, basis::RBasis)
+    compress(op, basis::RBasis)
 
-Compress one term of an [`AffineDecomposition`](@ref) of `AbstractMatrix` type.
+Compress one term of an [`AffineDecomposition`](@ref) `ApproxMPO` type.
 """
-function compress(M::AbstractMatrix, basis::RBasis)
+function compress(op, basis::RBasis)
+    term = overlap_matrix(basis.snapshots, map(Ψ -> op * Ψ, basis.snapshots))
+    basis.vectors' * term * basis.vectors
+end
+
+"""
+    compress(M::AbstractMatrix, basis::RBasis{<:AbstractVector})
+
+Compress term using matrix multiplications.
+"""
+function compress(M::AbstractMatrix, basis::RBasis{<:AbstractVector})
     # `hcat` memory bottleneck for large problems?
     # TODO: benchmark for realistic problems
     B = hcat(basis.snapshots...) * basis.vectors

@@ -78,7 +78,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
         @assert size(Ψ₀, 1) == size(H, 1)
         # TODO: Why is this commented out?
         # @assert size(Ψ₀, 2) ≥ lobpcg.n_target + lobpcg.n_ep_extra
-        # -> estimate_gs(...) might not deliver such size(Ψ₀, 2); add extra columns if needed?
+        # -> interpolate(...) might not deliver such size(Ψ₀, 2); add extra columns if needed?
     end
 
     # Assemble Hamiltonian for parameter value μ

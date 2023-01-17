@@ -39,10 +39,10 @@ function fast_assemble(n_truth=20)
     hJ   = range(0.0, 3.5; length=30)
     grid = RegularGrid(Δ, hJ)
     
-    pod = POD(; n_truth, verbose=false)
+    pod      = POD(; n_truth, verbose=false)
     fulldiag = FullDiagonalization(; n_target=1, tol_degeneracy=1e-4)
-    basis, = assemble(H, grid, pod, fulldiag)
-    basis
+    info     = assemble(H, grid, pod, fulldiag)
+    info.basis
 end
 
 include("grid.jl")

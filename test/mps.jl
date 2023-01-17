@@ -73,13 +73,13 @@ using ReducedBasis: reconstruct
     end
 
     # Check values of L/2+1 magnetization plateaus for L=6
-    function test_L6_magn_plateaus(basis::RBasis, h::AffineDecomposition, solver_truth)
+    function test_L6_magn_plateaus(info, solver_truth)
         @testset "Correct magnetization values" begin
             fd = FullDiagonalization(solver_truth)
-            m = compress(M, basis)
+            m = compress(M, info.basis)
             m_reduced = m([1])
             magnetization = map(grid_on) do μ
-                _, φ_rb = solve(h, basis.metric, μ, fd)
+                _, φ_rb = solve(info.h_cache.h, info.basis.metric, μ, fd)
                 sum(eachcol(φ_rb)) do φ
                     abs(dot(φ, m_reduced, φ)) / size(φ_rb, 2)
                 end
@@ -93,7 +93,7 @@ using ReducedBasis: reconstruct
     end
 
     # Check if errors are low at solved parameter points
-    function test_low_errors(basis::RBasis, info, solver_truth)
+    function test_low_errors(info, solver_truth)
         @testset "Low errors at solved parameter points" begin
             fd = FullDiagonalization(solver_truth)
             errors     = Float64[]
@@ -101,10 +101,11 @@ using ReducedBasis: reconstruct
             vectors    = Matrix[]
             values_fd  = Float64[]
             vectors_fd = Matrix[]
-            for μ in unique(basis.parameters)
-                sol    = solve(info.h_cache.h, basis.metric, μ, fd)
+            for μ in unique(info.basis.parameters)
+                sol    = solve(info.h_cache.h, info.basis.metric, μ, fd)
                 sol_fd = solve(H_matrix, μ, nothing, fd)
-                push!(errors, estimate_error(greedy.estimator, μ, info.h_cache, basis, sol))
+                push!(errors, estimate_error(greedy.estimator, μ, info.h_cache,
+                                             info.basis, sol))
                 append!(values, sol.values)
                 push!(vectors, sol.vectors)
                 append!(values_fd, sol_fd.values)
@@ -117,11 +118,12 @@ using ReducedBasis: reconstruct
             @test maximum((values .- values_fd) ./ values_fd) < sqrt(info.err_max)
             # If degenerate: low eigenvector errors (via projectors onto degenerate subspace)
             if solver_truth.n_states > 1 && solver_truth.tol_degeneracy > 0.0
-                vec_snapshots = reconstruct.(basis.snapshots)
-                B = hcat(vec_snapshots...) * basis.vectors
+                vec_snapshots = reconstruct.(info.basis.snapshots)
+                B = hcat(vec_snapshots...) * info.basis.vectors
                 hilbert_vectors = map(φ -> B * φ, vectors)
                 proj_fd = [v * v' for v in vectors_fd]
-                vector_errors = [norm(Φ * Φ' - p) / norm(p) for (Φ, p) in zip(hilbert_vectors, proj_fd)]
+                vector_errors = [norm(Φ * Φ' - p) / norm(p)
+                                 for (Φ, p) in zip(hilbert_vectors, proj_fd)]
                 @test maximum(vector_errors) < sqrt(info.err_max)
             end
         end
@@ -133,18 +135,18 @@ using ReducedBasis: reconstruct
         )
         @testset "Greedy assembly: degenerate" begin
             collector = InfoCollector(:λ_grid)
-            basis, h, info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=collect)
-            @test multiplicity(basis)[1] > 1
+            info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=collect)
+            @test multiplicity(info.basis)[1] > 1
             test_variational(collector)
-            test_L6_magn_plateaus(basis, h, dm_deg)
-            test_low_errors(basis, info, dm_deg)
+            test_L6_magn_plateaus(info, dm_deg)
+            test_low_errors(info, dm_deg)
         end
         @testset "Greedy assembly: non-degenerate" begin
             collector = InfoCollector(:λ_grid)
-            basis, h, info = assemble(H, grid_off, greedy, dm_nondeg, edcomp; callback=collector)
+            info = assemble(H, grid_off, greedy, dm_nondeg, edcomp; callback=collector)
             test_variational(collector)
-            test_L6_magn_plateaus(basis, h, dm_nondeg)
-            test_low_errors(basis, info, dm_nondeg)
+            test_L6_magn_plateaus(info, dm_nondeg)
+            test_low_errors(info, dm_nondeg)
         end
     end
 
@@ -154,18 +156,18 @@ using ReducedBasis: reconstruct
         )
         @testset "Greedy assembly: degenerate" begin
             collector = InfoCollector(:λ_grid)
-            basis, h, info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=collector)
+            info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=collector)
             @test multiplicity(basis)[1] > 1
             test_variational(collector)
-            test_L6_magn_plateaus(basis, h, dm_deg)
-            test_low_errors(basis, info, dm_deg)
+            test_L6_magn_plateaus(info, dm_deg)
+            test_low_errors(info, dm_deg)
         end
         @testset "Greedy assembly: non-degenerate" begin
             collector = InfoCollector(:λ_grid)
-            basis, h, info = assemble(H, grid_off, greedy, dm_nondeg, edcomp; callback=collector)
+            info = assemble(H, grid_off, greedy, dm_nondeg, edcomp; callback=collector)
             test_variational(collector)
-            test_L6_magn_plateaus(basis, h, dm_nondeg)
-            test_low_errors(basis, info, dm_nondeg)
+            test_L6_magn_plateaus(info, dm_nondeg)
+            test_low_errors(info, dm_nondeg)
         end
     end
 end

@@ -38,7 +38,8 @@ dm = DMRG(; n_states=1, tol_degeneracy=0.0,
 edcomp = EigenDecomposition(; cutoff=1e-7)
 
 # Assemble
-basis, h, info = assemble(H, grid_train, greedy, dm, edcomp)
+info = assemble(H, grid_train, greedy, dm, edcomp)
+basis = info.basis; h = info.h_cache.h;
 
 # Compress observable
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])

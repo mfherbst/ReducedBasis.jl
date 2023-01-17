@@ -40,7 +40,8 @@ lobpcg = LOBPCG(; n_target=1, tol_degeneracy=1e-4, tol=1e-9);
 qrcomp = QRCompress(; tol=1e-10)
 
 # Assemble
-basis, h, info = assemble(H, grid_train, greedy, lobpcg, qrcomp)
+info = assemble(H, grid_train, greedy, lobpcg, qrcomp)
+basis = info.basis; h = info.h_cache.h;
 
 # Compress observable
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])

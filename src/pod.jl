@@ -47,5 +47,5 @@ function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
     BᵀB       = U_trunc' * U_trunc
     basis     = RBasis(snapshots, parameters, I, BᵀB, BᵀB)
 
-    basis, (; U, Σ, V)
+    (; basis, U, Σ, V)
 end

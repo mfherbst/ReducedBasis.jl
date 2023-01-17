@@ -30,61 +30,6 @@ function reconstruct(mps::MPS)
 end
 
 """
-Extension type for orthogonalization and compression using eigenvalue decomposition
-of the basis overlap matrix. See also [`extend`](@ref).
-
-# Fields
-- `cutoff::Float64=1e-6`: cutoff for minimal eigenvalue accuracy.
-"""
-@kwdef struct EigenDecomposition
-    cutoff::Float64 = 1e-6
-end
-
-"""
-    extend(basis::RBasis{MPS}, new_snapshot::Vector{MPS}, μ, ed::EigenDecomposition)
-
-Extend the MPS reduced basis by orthonormalizing and compressing via eigenvalue decomposition.
-
-The overlap matrix ``S`` in `basis.snapshot_overlaps` is eigenvalue decomposed
-``S = U^\\dagger \\Lambda U`` and orthonormalized by computing the vector coefficients
-``V = U \\Lambda^{-1/2}``. Modes with an relative squared eigenvalue error smaller than
-`ed.cutoff` are dropped.
-"""
-function extend(basis::RBasis{MPS}, new_snapshot::Vector{MPS}, μ, ed::EigenDecomposition)
-    @assert all(length.(new_snapshot) .== length(basis.snapshots[1])) "MPS must have same length as column MPS"
-    overlaps = extend_overlaps(basis.snapshot_overlaps, basis.snapshots, new_snapshot)
-
-    # Orthonormalization via eigenvalue decomposition
-    Λ, U = eigen(Hermitian(overlaps))  # Hermitian to automatically sort by smallest λ
-    λ_error_trunc = 0.0
-    keep = 1
-    if !iszero(ed.cutoff)
-        λ²_psums      = reverse(cumsum(Λ.^2))  # Reverse to put largest eigenvector sum first
-        λ²_errors     = @. sqrt(λ²_psums / λ²_psums[1])
-        idx_trunc     = findlast(err -> err > ed.cutoff, λ²_errors)
-        λ_error_trunc = λ²_errors[idx_trunc]
-        keep          = idx_trunc - dimension(basis)
-        if keep ≤ 0  # Return old basis, if no significant snapshots can be added
-            return basis, keep, λ_error_trunc, minimum(Λ)
-        end
-
-        if keep != length(new_snapshot)  # Truncate/compress
-            Λ = Λ[1:idx_trunc]
-            U = U[1:idx_trunc, 1:idx_trunc]
-            overlaps = overlaps[1:idx_trunc, 1:idx_trunc]
-            λ_error_trunc = λ²_errors[idx_trunc + 1]
-        end
-    end
-    snapshots   = append!(copy(basis.snapshots), new_snapshot[1:keep])  # TODO: use ordering of Λ
-    parameters  = append!(copy(basis.parameters), fill(μ, keep))
-    vectors_new = U * Diagonal(1 ./ sqrt.(abs.(Λ)))
-
-    RBasis(snapshots, parameters, vectors_new,
-           overlaps, vectors_new' * overlaps * vectors_new),
-    keep, λ_error_trunc, minimum(Λ)
-end
-
-"""
 Carries an `ITensors.MPO` matrix-product operator and possible truncation keyword arguments.
 This enables a simple `mpo * mps` syntax while allowing for proper truncation throughout
 the basis assembly.
@@ -145,16 +90,6 @@ function (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
     θ = ad.coefficient_map(μ)
     opsum = sum(c * term.opsum for (c, term) in zip(θ, ad.terms))
     MPO(opsum, last.(siteinds(ad.terms[1].mpo)))
-end
-
-"""
-    compress(mpo::ApproxMPO, basis::RBasis{MPS})
-
-Compress one term of `ApproxMPO` type.
-"""
-function compress(mpo::ApproxMPO, basis::RBasis{MPS})
-    matel = overlap_matrix(basis.snapshots, map(Ψ -> mpo * Ψ, basis.snapshots))
-    basis.vectors' * matel * basis.vectors
 end
 
 """
@@ -250,12 +185,12 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
 end
 
 """
-    estimate_gs(basis::RBasis{MPS}, h::AffineDecomposition, μ, dm::DMRG, solver_online)
+    interpolate(basis::RBasis{MPS}, h::AffineDecomposition, μ, dm::DMRG, solver_online)
 
-Compute ground state MPS from the reduced basis by MPS addition in
+Compute ground state MPS at `μ` from the reduced basis by MPS addition in
 ``| \\Phi(\\mathbf{\\mu}) \\rangle = \\sum_{k=1}^{\\dim B} [V \\varphi(\\mathbf{\\mu_k})]_k\\, | \\Psi(\\mathbf{\\mu_k}) \\rangle``.
 """
-function estimate_gs(basis::RBasis{MPS}, h::AffineDecomposition, μ, dm::DMRG, solver_online)
+function interpolate(basis::RBasis{MPS}, h::AffineDecomposition, μ, dm::DMRG, solver_online)
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
     φ_trans = basis.vectors * φ_rb
     map(eachcol(φ_trans)) do col  # Add MPS and multiply by φ coefficients

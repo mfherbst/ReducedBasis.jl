@@ -23,20 +23,20 @@ using ReducedBasis
         Ψ = [rand(length(basis.snapshots[1])) for _ in 1:m]
         μ = rand(length(basis.parameters[1]))
         @testset "NoCompress" begin
-            new_basis, = extend(basis, Ψ, μ, NoCompress())
-            @test dimension(new_basis) == d_basis + m
-            @test n_truthsolve(new_basis) == nt + 1
-            @test multiplicity(new_basis)[end] == m
-            @test norm(new_basis.metric - I) ≥ 0.1
+            ext = extend(basis, Ψ, μ, NoCompress())
+            @test dimension(ext.basis) == d_basis + m
+            @test n_truthsolve(ext.basis) == nt + 1
+            @test multiplicity(ext.basis)[end] == m
+            @test norm(ext.basis.metric - I) ≥ 0.1
         end
 
         @testset "QRCompress" begin
-            new_basis, keep, = extend(basis, Ψ, μ, QRCompress())
-            if !isnothing(keep)
-                @test dimension(new_basis) ≤ d_basis + m
-                @test n_truthsolve(new_basis) == nt + 1
-                @test multiplicity(new_basis)[end] ≤ m
-                @test norm(new_basis.metric - I) ≤ 1e-9
+            ext = extend(basis, Ψ, μ, QRCompress())
+            if !isnothing(ext.keep)
+                @test dimension(ext.basis) ≤ d_basis + m
+                @test n_truthsolve(ext.basis) == nt + 1
+                @test multiplicity(ext.basis)[end] ≤ m
+                @test norm(ext.basis.metric - I) ≤ 1e-9
             end
         end
     end
