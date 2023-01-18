@@ -32,10 +32,8 @@ function HamiltonianCache(H::AffineDecomposition, basis::RBasis)
                    (n_terms(H), n_terms(H)))
     h = AffineDecomposition([basis.vectors' * term * basis.vectors for term in ΨHΨ],
                             H.coefficient_map)
-    h² = AffineDecomposition(
-        [basis.vectors' * term * basis.vectors for term in ΨHHΨ],
-        μ -> (H.coefficient_map(μ) * H.coefficient_map(μ)'),
-    )
+    h² = AffineDecomposition([basis.vectors' * term * basis.vectors for term in ΨHHΨ],
+                             μ -> (H.coefficient_map(μ) * H.coefficient_map(μ)'))
     HamiltonianCache(H, HΨ, ΨHΨ, ΨHHΨ, h, h²)
 end
 
