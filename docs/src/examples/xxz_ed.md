@@ -9,7 +9,7 @@ For that purpose, we cover the three basic steps of the reduced basis workflow:
 3. Online phase: Lastly, using the surrogate, we measure observables with reduced computational cost.
 
 Let us see, how to perform these steps using `ReducedBasis`.
-As a first application, we will explore a canonical model from quantum spin physics, the *one-dimensional XXZ chain*
+As a first application, we will explore a canonical model from quantum spin physics, the *one-dimensional spin-1/2 XXZ chain*
 
 ```math
 H = \sum_{i=1}^{L-1} \big[ S_i^x S_{i+1}^x + S_i^y S_{i+1}^y + \Delta S_i^z S_{i+1}^z \big] - \frac{h}{J} \sum_{i=1}^L S_i^z .
@@ -74,8 +74,8 @@ function to_global(op::M, L::Int, i::Int) where {M<:AbstractMatrix}
 end
 ```
 
-To be able to create an [`AffineDecomposition`](@ref), we first need to identify the terms ``H_q`` and the coefficient functions ``\\theta_q({\\bm{\\mu})``.
-In our specific case, we can identify the parameter vector ``\\bm{\\mu} = (1, \\Delta, h/J)`` and the associated coefficient function as ``\\bm{\\theta}(\\bm{\\mu}) = (1, \\mu_1, -\\mu_2)``.
+To be able to create an [`AffineDecomposition`](@ref), we first need to identify the terms ``H_q`` and the coefficient functions ``\theta_q(\bm{\mu})``.
+In our specific case, we can identify the parameter vector ``\bm{\mu} = (1, \Delta, h/J)`` and the associated coefficient function as ``\bm{\theta}(\bm{\mu}) = (1, \mu_1, -\mu_2)``.
 Hence we arrive at the following Hamiltonian implementation:
 
 ```@example xxz_ed; continued = true
@@ -89,7 +89,7 @@ function xxz_chain(L)
 end
 ```
 
-Using these functions, we initialize a small system of length ``L=6`` with a Hamiltonian matrix dimension of ``2^6 = 64``:
+Using these functions, we initialize a small system of length ``L=6`` with a matrix dimension of ``2^6 = 64``:
 
 ```@example xxz_ed; continued = true
 L = 6
@@ -123,7 +123,7 @@ An numerically efficient way to realize this is to use QR decomposition methods 
 Note that we choose a tolerance `tol` to discard snapshot vectors that do not significantly contribute to the basis:
 
 ```@example xxz_ed; continued = true
-qrcomp = QRCompress(; tol=1e-10)
+qrcomp = QRCompress(; tol=1e-9)
 ```
 
 We lastly need to set the parameters for the greedy basis assembly by creating a [`Greedy`](@ref) object.
@@ -179,8 +179,8 @@ To compute expectation values on all grid points, it is convenient to use a `map
 magnetization = map(grid_online) do μ
     _, φ_rb = solve(h, basis.metric, μ, fulldiag)
     sum(eachcol(φ_rb)) do u
-        abs(dot(u, m_reduced, u)) / size(φ_rb, 2)
-    end
+        abs(dot(u, m_reduced, u))
+    end / size(φ_rb, 2)
 end
 ```
 
@@ -192,7 +192,7 @@ In addition to the magnetization, let us also plot the parameter points at which
 hm = heatmap(grid_online.ranges[1], grid_online.ranges[2], magnetization';
              xlabel=raw"$\Delta$", ylabel=raw"$h/J$", title="magnetization",
              colorbar=true, clims=(0.0, 1.0), leg=false)
-plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:fuchsia)
+plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:green)
 params = unique(basis.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
          markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)

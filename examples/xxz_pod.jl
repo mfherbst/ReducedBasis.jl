@@ -32,16 +32,16 @@ end
 # Offline parameters
 L = 6
 H = xxz_chain(L)
-Δ = range(-1.0, 2.5; length=40)
-hJ = range(0.0, 3.5; length=40)
+Δ = range(-1.0, 2.5; length=20)
+hJ = range(0.0, 3.5; length=20)
 grid_train = RegularGrid(Δ, hJ)
-greedy = Greedy(; estimator=Residual(), tol=1e-3, init_from_rb=true)
-lobpcg = LOBPCG(; n_target=1, tol_degeneracy=1e-4, tol=1e-9)
-qrcomp = QRCompress(; tol=1e-9)
+pod = POD(; n_vectors=24)
+lobpcg = LOBPCG(; n_target=1, tol_degeneracy=1e-4, tol=1e-9);
 
 # Assemble
-info = assemble(H, grid_train, greedy, lobpcg, qrcomp)
-basis = info.basis; h = info.h_cache.h;
+info = assemble(H, grid_train, pod, lobpcg)
+h_cache = HamiltonianCache(H, info.basis)
+basis = info.basis; h = h_cache.h;
 
 # Compress observable
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
@@ -65,6 +65,3 @@ hm = heatmap(grid_online.ranges[1], grid_online.ranges[2], magnetization';
              xlabel=raw"$\Delta$", ylabel=raw"$h/J$", title="magnetization",
              colorbar=true, clims=(0.0, 1.0), leg=false)
 plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:green)
-params = unique(basis.parameters)
-scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
-         markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)

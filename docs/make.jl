@@ -20,6 +20,8 @@ makedocs(;
         "Examples" => [
             "examples/xxz_ed.md",
             "examples/xxz_dmrg.md",
+            "examples/xxz_pod.md",
+            "examples/multi_ad.md",
         ],
         "api.md"
     ],

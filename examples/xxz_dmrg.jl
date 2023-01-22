@@ -44,7 +44,7 @@ basis = info.basis; h = info.h_cache.h;
 # Compress observable
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
 m = compress(M, basis)
-m_reduced = m([1]) # hide
+m_reduced = m([1])
 
 # Online phase
 Δ_online = range(first(Δ), last(Δ); length=100)
@@ -54,15 +54,15 @@ fulldiag = FullDiagonalization(dm)
 magnetization = map(grid_online) do μ
     _, φ_rb = solve(h, basis.metric, μ, fulldiag)
     sum(eachcol(φ_rb)) do u
-        abs(dot(u, m_reduced, u)) / size(φ_rb, 2)
-    end
+        abs(dot(u, m_reduced, u))
+    end / size(φ_rb, 2)
 end
 
 # Plot magnetization heatmap and snapshot points
 hm = heatmap(grid_online.ranges[1], grid_online.ranges[2], magnetization';
              xlabel=raw"$\Delta$", ylabel=raw"$h/J$", title="magnetization ",
              colorbar=true, clims=(0.0, 1.0), leg=false)
-plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:fuchsia)
+plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:green)
 params = unique(basis.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
          markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)

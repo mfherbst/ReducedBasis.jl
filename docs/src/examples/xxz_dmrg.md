@@ -90,7 +90,7 @@ basis = info.basis; h = info.h_cache.h;
 ```
 
 The returned `basis` now has snapshot vectors of `ITensors.MPS` type, which we have to keep in mind when we want to compress observables.
-That is to say, the observables have to be constructed as `AffineDecompositions` with `ApproxMPO` terms as for the Hamiltonian.
+That is to say, the observables have to be constructed as [`AffineDecomposition`](@ref)s with [`ApproxMPO`](@ref) terms as for the Hamiltonian.
 Again, we want to compute the magnetization so that we can reuse the third term of `H`:
 
 ```@example xxz_dmrg; continued = true
@@ -129,8 +129,8 @@ grid_online = RegularGrid(Δ_online, hJ_online) # hide
 magnetization = map(grid_online) do μ # hide
     _, φ_rb = solve(h, basis.metric, μ, fulldiag) # hide
     sum(eachcol(φ_rb)) do u # hide
-        abs(dot(u, m_reduced, u)) / size(φ_rb, 2) # hide
-    end # hide
+        abs(dot(u, m_reduced, u)) # hide
+    end / size(φ_rb, 2) # hide
 end # hide
 ```
 
@@ -140,7 +140,7 @@ In the same way as before, we perform the online calculations and arrive at the 
 hm = heatmap(grid_online.ranges[1], grid_online.ranges[2], magnetization';
              xlabel=raw"$\Delta$", ylabel=raw"$h/J$", title="magnetization ",
              colorbar=true, clims=(0.0, 1.0), leg=false)
-plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:fuchsia)
+plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:green)
 params = unique(basis.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
          markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)

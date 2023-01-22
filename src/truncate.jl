@@ -52,10 +52,11 @@ function Base.truncate(hc::HamiltonianCache, basis_trunc::RBasis)
     HamiltonianCache(hc.H, HΨ_trunc, ΨHΨ_trunc, ΨHHΨ_trunc, h_trunc, h²_trunc)
 end
 
-function Base.truncate(ad::AffineDecomposition, basis_trunc::RBasis)
-    !(basis_trunc.vectors isa UniformScaling) && error("not currently supported")
-    # TODO: how to truncate AD with vectors that are not just UniformScaling?
+function Base.truncate(
+    ad::AffineDecomposition, basis_trunc::RBasis{V,T,P,<:UniformScaling}
+) where {V,T<:Number,P}
     idx_trunc = dimension(basis_trunc)
     AffineDecomposition([term[1:idx_trunc, 1:idx_trunc] for term in ad.terms],
                         ad.coefficient_map)
 end
+# TODO: how to truncate AD with vectors that are not just UniformScaling?
