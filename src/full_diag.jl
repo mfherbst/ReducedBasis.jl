@@ -47,7 +47,7 @@ end
     solve(h::AffineDecomposition, b::Matrix, μ, fd::FullDiagonalization)
     
 Solve the generalized eigenvalue problem
-``h(\\mathbf{\\mu})\\, \\varphi(\\mathbf{\\mu}) = \\lambda(\\mathbf{\\mu})\\, b\\, \\varphi(\\mathbf{\\mu})``
+``h(\\bm{\\mu})\\, \\varphi(\\bm{\\mu}) = \\lambda(\\bm{\\mu})\\, b\\, \\varphi(\\bm{\\mu})``
 at parameter point `μ` using [`FullDiagonalization`](@ref).
 """
 function solve(h::AffineDecomposition, b::Matrix, μ, fd::FullDiagonalization)

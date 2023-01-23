@@ -5,8 +5,8 @@ Central type containing snapshots and associated objects that make a reduced bas
 
 The snapshot vector can be of a generic type `V` and are stored in an `AbstractVector{V}`.
 The associated parameter points of type `P` are contained in `parameters`.
-Note that for snapshots ``\\mathbf{\\Psi}(\\mathbf{\\mu}) = (\\Psi_1(\\mathbf{\\mu}),\\dots,\\Psi_m(\\mathbf{\\mu}))``
-of multiplicity ``m`` the parameter point ``\\mathbf{\\mu}`` is contained ``m`` times.
+Note that for snapshots ``\\bm{\\Psi}(\\bm{\\mu}) = (\\Psi_1(\\bm{\\mu}),\\dots,\\Psi_m(\\bm{\\mu}))``
+of multiplicity ``m`` the parameter point ``\\bm{\\mu}`` is contained ``m`` times.
 
 Treated as a matrix, the reduced basis ``B = \\Upsilon V`` is made up of the snapshot
 vectors as column vectors in ``\\Upsilon``  and vector coefficients ``V``.
@@ -146,7 +146,7 @@ end
 Extend using QR orthonormalization and compression.
 
 The orthonormalization is performed by QR decomposing the orthogonal projection
-``\\mathbf{\\Psi}(\\mathbf{\\mu}_{n+1}) - B_n^\\dagger [B_n^\\dagger B_n]^{-1} B_n \\mathbf{\\Psi}(\\mathbf{\\mu}_n)``
+``\\bm{\\Psi}(\\bm{\\mu}_{n+1}) - B_n^\\dagger [B_n^\\dagger B_n]^{-1} B_n \\bm{\\Psi}(\\bm{\\mu}_n)``
 and appending ``Q`` to snapshots. Modes that have an ``R`` column maximum falling below
 the `qrcomp.tol` tolerance are dropped.
 """

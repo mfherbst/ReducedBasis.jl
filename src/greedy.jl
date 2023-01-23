@@ -5,7 +5,7 @@ abstract type ErrorEstimate end
 
 """
 Estimator type for the residual
-``\\mathrm{Res}(\\mathbf{\\mu}) = \\lVert H(\\mathbf{\\mu}) B \\varphi(\\mathbf{\\mu}) - \\lambda B \\varphi(\\mathbf{\\mu}) \\rVert``.
+``\\mathrm{Res}(\\bm{\\mu}) = \\lVert H(\\bm{\\mu}) B \\varphi(\\bm{\\mu}) - \\lambda B \\varphi(\\bm{\\mu}) \\rVert``.
 """
 struct Residual <: ErrorEstimate end
 
@@ -51,7 +51,7 @@ end
 
 Compute Hilbert-space-dimensional ground state vector at parameter point `μ`
 from the reduced basis using
-``\\mathbf{\\Phi}(\\mathbf{\\mu}) = B \\mathbf{\\varphi}(\\mathbf{\\mu})``.
+``\\bm{\\Phi}(\\bm{\\mu}) = B \\bm{\\varphi}(\\bm{\\mu})``.
 """
 function interpolate(basis::RBasis, h::AffineDecomposition, μ, _, solver_online)
     # TODO: How to deal with redundant argument in this case?

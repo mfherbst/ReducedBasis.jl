@@ -2,16 +2,16 @@
 Represents an affine decomposition
 
 ```math
-O(\\mathbf{\\mu}) = \\sum_{r=1}^R \\alpha_r(\\mathbf{\\mu})\\, O_r
+O(\\bm{\\mu}) = \\sum_{r=1}^R \\alpha_r(\\bm{\\mu})\\, O_r
 ```
 
 where `terms<:AbstractArray` carries the ``O_r`` matrices (or more generally linear maps)
-and the `coefficient_map<:Function` implements the ``\\alpha_r(\\mathbf{\\mu})``
-coefficient functions.
+and the `coefficient_map<:Function` implements the ``\\alpha_r(\\bm{\\mu})`` coefficient
+functions.
 
 Note that ``r = (r_1, \\dots, r_d)`` generally is a multi-index and as such `terms`
 can be a ``d``-dimensional array. Correspondingly, `coefficient_map` maps parameter points
-``\\mathbf{\\mu}`` to an `size(terms)` array.
+``\\bm{\\mu}`` to an `size(terms)` array.
 """
 struct AffineDecomposition{T<:AbstractArray,F<:Function}
     terms::T
@@ -49,6 +49,32 @@ corresponding to ``o = B^\\dagger O B``.
 """
 function compress(ad::AffineDecomposition, basis::RBasis)
     AffineDecomposition(compress.(ad.terms, Ref(basis)), ad.coefficient_map)
+end
+
+"""
+    compress(ad::AffineDecomposition{<:Matrix,<:Function},
+             basis::RBasis; symmetric_terms=false)
+
+Perform compression for an [`AffineDecomposition`](@ref) with terms
+with two indices (double-sum observables), including an option to
+exploit the possible symmetry of terms ``O_{r,r'} = O_{r',r}``,
+such that only the necessary compressions are computed.
+"""
+function compress(ad::AffineDecomposition{<:Matrix,<:Function},
+                  basis::RBasis; symmetric_terms=false)
+    if symmetric_terms
+        terms = Matrix{Matrix}(undef, size(ad.terms))
+        for i = 1:size(ad.terms, 1), j = 1:size(ad.terms, 2)
+            if i > j  # Exploit symmetry
+                terms[i, j] = terms[j, i]
+                continue
+            end
+            terms[i, j] = compress(ad.terms[i, j], basis)
+        end
+    else
+        terms = compress.(ad.terms, Ref(basis))
+    end
+    AffineDecomposition(terms, ad.coefficient_map)
 end
 
 """

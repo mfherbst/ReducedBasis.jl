@@ -1,7 +1,7 @@
 # Greedy basis assembly using DMRG
 
-As a follow-up example, we now want to showcase how to compute an `RBasis` by means of the [density matrix renormalization group](https://tensornetwork.org/mps/algorithms/dmrg/) (DMRG).
-To that end, we utilize the `ITensors.jl` library which, among other things, efficiently implements DMRG.
+As a follow-up example, we now want to showcase how to compute a reduced basis by means of the [density matrix renormalization group](https://tensornetwork.org/mps/algorithms/dmrg/) (DMRG).
+To that end, we utilize the ITensors.jl package which, among other things, efficiently implements DMRG.
 We will see that, while we need to adjust the way we set up the model Hamiltonian as well as our solver, most steps stay the same.
 Again, we treat the one-dimensional ``S=1/2`` XXZ model from the previous example.
 
@@ -12,14 +12,11 @@ Instead of constructing explicit matrices from Kronecker products as we did befo
 For that purpose, we first import
 
 ```@example xxz_dmrg; continued = true
-using LinearAlgebra
-using ITensors
-using Plots
-using ReducedBasis
+using LinearAlgebra, ITensors, Plots, ReducedBasis
 ```
 
 now featuring `ITensors`.
-To build the Hamiltonian terms as MPOs, we make use of the [`OpSum()`](https://itensor.github.io/ITensors.jl/stable/tutorials/DMRG.html) object that automatically produces an MPO from a string of operators.
+To build the Hamiltonian terms as MPOs, we make use of the `ITensors.OpSum()` object that automatically produces an MPO from a string of operators.
 The affine MPO terms are then stored in an [`AffineDecomposition`](@ref) as [`ApproxMPO`](@ref)s which also include possible truncation keyword arguments:
 
 ```@example xxz_dmrg; continued = true
@@ -35,12 +32,10 @@ function xxz_chain(sites::IndexSet; kwargs...)
     end
     magn_term += "Sz", length(sites)  # Add last magnetization term
     coefficient_map = μ -> [1.0, μ[1], -μ[2]]
-    AffineDecomposition(
-        [ApproxMPO(MPO(xy_term, sites), xy_term; kwargs...),
-         ApproxMPO(MPO(zz_term, sites), zz_term; kwargs...),
-         ApproxMPO(MPO(magn_term, sites), magn_term; kwargs...)],
-        coefficient_map,
-    )
+    AffineDecomposition([ApproxMPO(MPO(xy_term, sites), xy_term; kwargs...),
+                        ApproxMPO(MPO(zz_term, sites), zz_term; kwargs...),
+                        ApproxMPO(MPO(magn_term, sites), magn_term; kwargs...)],
+                        coefficient_map)
 end
 ```
 
@@ -52,12 +47,12 @@ sites = siteinds("S=1/2", L)
 H = xxz_chain(sites; cutoff=1e-9)
 ```
 
-We now chose a bigger system size, since the tensor format allows for efficient low rank approximations (hence the `cutoff`) that buy us a substantial performance advantage when going to larger systems.
+Notice that we can now choose a bigger system size (which is still very small here), since the tensor format allows for efficient low rank approximations (hence the `cutoff`) that buy us a substantial performance advantage when going to larger systems.
 
 ## Using the [`DMRG`](@ref) solver for basis assembly
 
 Having created our Hamiltonian in MPO format, we now need a solver that is able to compute ground states from MPOs.
-The corresponding ground state will also be obtained in a tensor format, namely as *matrix product states* (MPS).
+The corresponding ground state will also be obtained in a tensor format, namely as a *matrix product state* (MPS).
 This is achieved by `ITensors.dmrg` which is wrapped in the [`DMRG`](@ref) solver type:
 
 ```@example xxz_dmrg; continued = true
@@ -66,10 +61,11 @@ dm = DMRG(; n_states=1, tol_degeneracy=0.0,
           observer=() -> DMRGObserver(; energy_tol=1e-9))
 ```
 
-While the implemented DMRG solver is capable of solving degenerate ground state, we here opt for non-degenerate settings (i.e. `n_states=1` and `tol_degeneracy=0.0`), since one encounters a ``L+1``-fold degeneracy on the parameter domain, where the degenerate DMRG solver can produce instable results for larger ``L``.
+While the implemented DMRG solver is capable of solving degenerate ground states, we here opt for non-degenerate settings, i.e. `n_states=1` and `tol_degeneracy=0.0`.
+(We do this due to a ``L+1``-fold degeneracy on the parameter domain, where the degenerate DMRG solver can produce instable results for larger ``L``.)
 
 As discussed in the last example, we need a way to orthogonalize the reduced basis.
-Due to the MPS format that the snapshots will have, we cannot use QR decompositions anymore and resort to a different method, [`EigenDecomposition`](@ref), featuring an eigenvalue decomposition of the snapshot overlap matrix:
+Due to the MPS format that the snapshots will have, we cannot use QR decompositions anymore and resort to a different method, [`EigenDecomposition`](@ref), featuring an eigenvalue decomposition of the snapshot overlap matrix that can drop insignificant snapshots that fall below a cutoff:
 
 ```@example xxz_dmrg; continued = true
 edcomp = EigenDecomposition(; cutoff=1e-7)
@@ -82,7 +78,7 @@ grid_train = RegularGrid(Δ, hJ) # hide
 greedy = Greedy(; estimator=Residual(), n_truth_max=22, init_from_rb=true) # hide
 ```
 
-Now with different types for `H`, the solver and the orthogonalizer, we call `assemble` using the `greedy` strategy and training grid from the last example:
+Now with different types for the Hamiltonian, the solver and the orthogonalizer, we call `assemble` using the `greedy` strategy and training grid from the last example:
 
 ```@example xxz_dmrg; continued = true
 info = assemble(H, grid_train, greedy, dm, edcomp)
@@ -90,7 +86,7 @@ basis = info.basis; h = info.h_cache.h;
 ```
 
 The returned `basis` now has snapshot vectors of `ITensors.MPS` type, which we have to keep in mind when we want to compress observables.
-That is to say, the observables have to be constructed as [`AffineDecomposition`](@ref)s with [`ApproxMPO`](@ref) terms as for the Hamiltonian.
+That is to say, the observables have to be constructed as [`AffineDecomposition`](@ref)s with [`ApproxMPO`](@ref) terms as we did for the Hamiltonian.
 Again, we want to compute the magnetization so that we can reuse the third term of `H`:
 
 ```@example xxz_dmrg; continued = true
@@ -113,8 +109,8 @@ magnetization = map(grid_online) do μ # hide
 end # hide
 ```
 
-And at that point, we can continue as before since we have arrived at the online phase where we only operate in the low-dimensional reduced basis space, agnostic of the previously used solver method.
-We have to make sure, however, to choose matching degeneracy settings for the [`FullDiagonalization`](@ref) solver in the online phase, which we do via the matching constructor:
+And at that point, we continue as before since we have arrived at the online phase where we only operate in the low-dimensional reduced basis space, agnostic of the snapshot solver method.
+We have to make sure, however, to choose matching degeneracy settings for the [`FullDiagonalization`](@ref) solver in the online phase:
 
 ```@example xxz_dmrg; continued = true
 fulldiag = FullDiagonalization(dm)
@@ -134,7 +130,7 @@ magnetization = map(grid_online) do μ # hide
 end # hide
 ```
 
-In the same way as before, we perform the online calculations and arrive at the following magnetization plot:
+In the same way as before, we perform the online computations and arrive at the following magnetization plot:
 
 ```@example xxz_dmrg
 hm = heatmap(grid_online.ranges[1], grid_online.ranges[2], magnetization';

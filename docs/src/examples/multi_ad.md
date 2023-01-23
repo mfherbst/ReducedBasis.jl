@@ -1,19 +1,21 @@
 # Affine decompositions with multi-indices and additional parameters
 
 In this example, we want to explore the capabilities of the central [`AffineDecomposition`](@ref) type.
-To advance the previous examples where we covered the magnetization — a very simple observable that consists of only one affine term and a parameter-independent coefficient — we now turn to observables where the indices are multi-indices ``r = (r_1, \dots, r_d)`` and the coefficients can depend on additional parameters ``p``, aside from the ``\mathbf{\mu}`` parameter points that are present in the Hamiltonian:
+To advance the previous examples where we covered the magnetization — a very simple observable that consists of only one affine term and a parameter-independent coefficient — we now turn to observables where the indices are multi-indices ``r = (r_1, \dots, r_d)`` and the coefficients can depend on additional parameters ``p``, aside from the ``\bm{\mu}`` parameter points that are present in the Hamiltonian:
 
 ```math
-O(\bm{\mu}, p) = \sum_{r=1}^R \alpha_r(\bm{\mu}, p)\, O_r
+O(\bm{\mu}, p) = \sum_{q=1}^Q \alpha_q(\bm{\mu}, p)\, O_q
 ```
 
 To stay within the realm of spin physics, we will consider the so-called *spin structure factor*
 
 ```math
-\mathcal{S}(k) = \sum_{r, r'} e^{-i (r - r') k} S^z_r S^z_{r'}
+\mathcal{S}(k) = \frac{1}{L} \sum_{r,r'=1}^L e^{-i (r - r') k} S^z_r S^z_{r'},\quad
+\alpha_{r,r'}(k) = \frac{e^{-i (r - r') k}}{L}, \quad
+O_{r,r'} =  S^z_r S^z_{r'}
 ```
 
-with ``k`` wavevector parameter to discuss the implementation of a more complicated observable.
+with a wavevector parameter ``k``, to discuss the implementation of a more complicated observable.
 
 ```@example multi_ad; continued = true
 using LinearAlgebra, SparseArrays, Plots, ReducedBasis # hide
@@ -63,33 +65,30 @@ fulldiag = FullDiagonalization(lobpcg) # hide
 
 So let us continue the first example where we have generated an ``L=6`` XXZ surrogate `basis` with a reduced Hamiltonian `h` using an exact diagonalization solver.
 Now the task is to implement the double-sum in ``\mathcal{S}``, as well as the ``k``-dependency in the coefficients.
-
-The double-sum can be encoded by putting all ``S^z_r S^z_{r'}`` combinations into a matrix.
-Since the indices ``r`` and ``r'`` commute, that matrix will by symmetric, hence we use the special `LinearAlgebra.Symmetric` matrix type:
+The double-sum can be encoded by putting all ``S^z_r S^z_{r'}`` combinations into a ``L \times L`` matrix:
 
 ``` @example multi_ad; continued = true
-terms = Symmetric(map(idx -> to_global(σz, L, first(idx.I)) * to_global(σz, L, last(idx.I)),
-                      CartesianIndices((1:L, 1:L))))
+terms = map(idx -> to_global(σz, L, first(idx.I)) * to_global(σz, L, last(idx.I)),
+            CartesianIndices((1:L, 1:L)))
 ```
 
-Correspondingly, the coefficient function now has to map one ``k`` value to a matrix of coefficients of the same size as the `terms` matrix.
-Here we can use `LinearAlgebra.Hermitian` as an abstract matrix type, since the coefficients satisfy ``\alpha_{r,r'}^* = \alpha_{r',r}``:
+Correspondingly, the coefficient function now has to map one ``k`` value to a matrix of coefficients of the same size as the `terms` matrix:
 
 ``` @example multi_ad; continued = true
-coefficient_map = k -> Hermitian(map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
-                                     CartesianIndices((1:L, 1:L))))
+coefficient_map = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
+                           CartesianIndices((1:L, 1:L)))
 ```
 
-Of course, one could also go without using `Symmetric` and `Hermitian`, but the advantage of using special matrix types is that the observable compression can now be performed much more efficiently.
-Namely, only the upper triangular matrix has to computed since the matrix elements satisify ``(\Psi_i^\dagger O_r \Psi_j)^* = \Psi_j^\dagger O_r \Psi_i``.
-Let's create the [`AffineDecomposition`](@ref) and compress:
+One feature of the structure factor that also shows up in many other affine decompositions with double-sums, is that the term indices commute, i.e. ``O_{r,r'} = O_{r',r}``.
+In that case, only the upper triangular matrix has to computed since ``B^\dagger O_{r,r'} B = B^\dagger O_{r',r} B`` are the same in the compressed affine decomposition.
+So let's create the [`AffineDecomposition`](@ref) and compress, exploiting this symmetry using the `symmetric_terms` keyword argument:
 
 ``` @example multi_ad; continued = true
 SF_zz = AffineDecomposition(terms, coefficient_map)
-sf_zz = compress(SF_zz, basis)
+sf_zz = compress(SF_zz, basis; symmetric_terms=true)
 ```
 
-In online evaluation of the structure factor, we need to first define some wavevector values and then compute the structure factor at each of them.
+In the online evaluation of the structure factor, we first need to define some wavevector values and then compute the structure factor at each of them.
 With the `grid_online` from before, this reads:
 
 ``` @example multi_ad; continued = true
@@ -117,4 +116,4 @@ end
 plot(hms...)
 ```
 
-It can be nicely seen that the spin structure factor indicates the ferromagnetic phase at ``k=0`` and continously moves through the magnetization plateaus until it reaches the antiferromagnetic plateau at ``k=\pi``.
+It can be nicely seen that the spin structure factor indicates the ferromagnetic phase at ``k=0`` and then moves through the magnetization plateaus until it reaches the antiferromagnetic plateau at ``k=\pi``.

@@ -31,9 +31,9 @@ end
 
 """
 Carries an `ITensors.MPO` matrix-product operator and possible truncation keyword arguments.
+
 This enables a simple `mpo * mps` syntax while allowing for proper truncation throughout
 the basis assembly.
-
 Includes the exact operator sum in `opsum` to be able to produce efficient sums of MPOs
 when constructing [`AffineDecomposition`](@ref) sums explicitly.
 """
@@ -49,7 +49,7 @@ end
 """
     ApproxMPO(mpo::MPO, opsum; <keyword arguments>)
     
-Construct an `ApproxMPO` with truncation default settings.
+Construct an `ApproxMPO` with default truncation settings.
 
 # Arguments
 
@@ -94,7 +94,7 @@ end
 
 """
 Solver type for the density matrix renormalization group (DMRG) as implemented
-in [`ITensors`](https://itensor.github.io/ITensors.jl/stable/DMRG.html).
+in [`ITensors.dmrg`](https://itensor.github.io/ITensors.jl/stable/DMRG.html).
 
 # Fields
 
@@ -117,7 +117,8 @@ end
 """
     FullDiagonalization(dm::DMRG) 
 
-Same for [`DMRG`](@ref).
+Construct [`FullDiagonalization`](@ref) with the same degeneracy tolerance as `dm` and
+fix `n_target=1`.
 """
 function FullDiagonalization(dm::DMRG)
     # Fix n_target=1 since DMRG solver cannot target excited states yet
@@ -188,7 +189,7 @@ end
     interpolate(basis::RBasis{MPS}, h::AffineDecomposition, μ, dm::DMRG, solver_online)
 
 Compute ground state MPS at `μ` from the reduced basis by MPS addition in
-``| \\Phi(\\mathbf{\\mu}) \\rangle = \\sum_{k=1}^{\\dim B} [V \\varphi(\\mathbf{\\mu_k})]_k\\, | \\Psi(\\mathbf{\\mu_k}) \\rangle``.
+``| \\Phi(\\bm{\\mu}) \\rangle = \\sum_{k=1}^{\\dim B} [V \\varphi(\\bm{\\mu_k})]_k\\, | \\Psi(\\bm{\\mu_k}) \\rangle``.
 """
 function interpolate(basis::RBasis{MPS}, h::AffineDecomposition, μ, dm::DMRG, solver_online)
     _, φ_rb = solve(h, basis.metric, μ, solver_online)

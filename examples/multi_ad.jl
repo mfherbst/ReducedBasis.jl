@@ -44,12 +44,12 @@ info = assemble(H, grid_train, greedy, lobpcg, qrcomp)
 basis = info.basis; h = info.h_cache.h;
 
 # Observables
-terms = Symmetric(map(idx -> to_global(σz, L, first(idx.I)) * to_global(σz, L, last(idx.I)),
-                      CartesianIndices((1:L, 1:L))))
-coefficient_map = k -> Hermitian(map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
-                                     CartesianIndices((1:L, 1:L))))
+terms = map(idx -> to_global(σz, L, first(idx.I)) * to_global(σz, L, last(idx.I)),
+            CartesianIndices((1:L, 1:L)))
+coefficient_map = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
+                           CartesianIndices((1:L, 1:L)))
 SF_zz = AffineDecomposition(terms, coefficient_map)
-sf_zz = compress(SF_zz, basis)
+sf_zz = compress(SF_zz, basis; symmetric_terms=true)
 
 # Online phase
 Δ_online = range(first(Δ), last(Δ); length=100)
@@ -75,7 +75,4 @@ for (i, q) in enumerate(wavevectors)
     push!(hms, heatmap(grid_online.ranges[1], grid_online.ranges[2], sf[i]'; 
                        title="\$k = $(round(q/π; digits=3))\\pi\$", kwargs...))
 end
-params = unique(basis.parameters)
-scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
-         markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)
 plot(hms...)

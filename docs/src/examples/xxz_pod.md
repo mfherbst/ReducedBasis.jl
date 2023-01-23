@@ -1,6 +1,6 @@
 # Basis assembly using Proper Orthogonal Decomposition
 
-In the last examples we have seen that with ReducedBasis.jl we can customize the truth solvers as well as the compression methods during reduced basis assembly.
+In the last examples we have seen that we can customize the snapshot solvers as well as the compression methods during reduced basis assembly.
 What we want to demonstrate in this example is that we can also use different strategies for basis assembly altogether.
 In particular, we will show how to use the Proper Orthogonal Decomposition ([`POD`](@ref)) technique in the offline stage.
 
@@ -33,13 +33,12 @@ function xxz_chain(L) # hide
 end # hide
 ```
 
-The conceptual difference between POD and the greedy assemebly strategy is that with POD, a truth solve is performed at all parameter points in the selected grid, followed by a singular value decomposition of the snapshot matrix.
+The conceptual difference between POD and the greedy assembly strategy is that with POD, a truth solve is performed at all parameter points in the selected grid, followed by a singular value decomposition of the snapshot matrix.
 In this way, we obtain an orthogonal basis by using the singular vectors as our reduced basis.
-While this procedure is less complex than the greedy strategy, it comes with the significantly increased cost of having to solve for snapshots at all grid points.
-Nonetheless, it can be useful to e.g. obtain a reference reduced basis and compare against a greedy basis.
+While this procedure is less complex than the greedy strategy, it comes with the significantly increased cost of having to solve snapshots at all grid points.
+Nonetheless, it can be useful to e.g. obtain a reference reduced basis and to compare against a greedy basis.
 
-To that end, let us stay with the example of the XXZ spin chain.
-We initialize the Hamiltonian as before (using the functions defined in the first example) and choose a grid and a solver method:
+So let us stay with the example of the XXZ spin chain and initialize the Hamiltonian as before (using the functions defined in the first example) and choose a grid as well as a solver method:
 
 ```@example xxz_pod; continued = true
 L = 6
