@@ -79,16 +79,16 @@ coefficient_map = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
                            CartesianIndices((1:L, 1:L)))
 ```
 
-One feature of the structure factor that also shows up in many other affine decompositions with double-sums, is that the term indices commute, i.e. ``O_{r,r'} = O_{r',r}``.
-In that case, only the upper triangular matrix has to computed since ``B^\dagger O_{r,r'} B = B^\dagger O_{r',r} B`` are the same in the compressed affine decomposition.
+One feature of the structure factor that also shows up in many other affine decompositions with double-sums is that the term indices commute, i.e. ``O_{r,r'} = O_{r',r}``.
+In that case, only the upper triangular matrix has to be computed since ``B^\dagger O_{r,r'} B = B^\dagger O_{r',r} B`` are the same in the compressed affine decomposition.
 So let's create the [`AffineDecomposition`](@ref) and compress, exploiting this symmetry using the `symmetric_terms` keyword argument:
 
 ``` @example multi_ad; continued = true
-SF_zz = AffineDecomposition(terms, coefficient_map)
-sf_zz = compress(SF_zz, basis; symmetric_terms=true)
+SFspin = AffineDecomposition(terms, coefficient_map)
+sfspin = compress(SFspin, basis; symmetric_terms=true)
 ```
 
-In the online evaluation of the structure factor, we first need to define some wavevector values and then compute the structure factor at each of them.
+In the online evaluation of the structure factor, we then need to define some wavevector values and compute the structure factor at each of them.
 With the `grid_online` from before, this reads:
 
 ``` @example multi_ad; continued = true
@@ -98,12 +98,14 @@ for (idx, μ) in pairs(grid_online)
     _, φ_rb = solve(h, basis.metric, μ, fulldiag)
     for (i, k) in enumerate(wavevectors)
         sf[i][idx] = sum(eachcol(φ_rb)) do u
-            abs(dot(u, sf_zz(k), u))
+            abs(dot(u, sfspin(k), u))
         end / size(φ_rb, 2)
     end
 end
 ```
 
+Here we again see the convenience of measuring observables in the online stage;
+adding more wavevector values does not significantly increase the computational cost, since it corresponds to a mere reevaluation of the coefficient functions and small vector-matrix products.
 Finally, let us see how the structure factor behaves for the different wavevector values:
 
 ``` @example multi_ad

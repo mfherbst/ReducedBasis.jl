@@ -75,6 +75,7 @@ Assemble an `RBasis` using the greedy strategy and any truth solving method.
 - `compressalg`: compression method for orthogonalization, etc. See also [`extend`](@ref).
 - `solver_online=FullDiagonalization(solver_truth)`: solving method that is used for the RB
   generalized eigenvalue problem.
+- `μ_start=grid[1]`: parameter point of the starting iteration.
 - `callback=print_callback`: callback function that operates on the iteration state during
   assembly. It is possible to chain multiple callback functions using `∘`.
 - `previous_info=nothing`: provide `info` object of a previous basis assembly to resume
@@ -82,16 +83,15 @@ Assemble an `RBasis` using the greedy strategy and any truth solving method.
   generated from scratch.
 """
 function assemble(H::AffineDecomposition, grid, greedy::Greedy, solver_truth, compressalg;
-                  solver_online=FullDiagonalization(solver_truth),
+                  solver_online=FullDiagonalization(solver_truth), μ_start=grid[1],
                   callback=print_callback, previous_info=nothing)
     info = callback((; state=:start))  # Initialize info object
     if isnothing(previous_info)  # First iteration
-        μ₁       = grid[1]
-        truth    = solve(H, μ₁, nothing, solver_truth)
+        truth    = solve(H, μ_start, nothing, solver_truth)
         BᵀB      = overlap_matrix(truth.vectors, truth.vectors)
-        basis    = RBasis(truth.vectors, fill(μ₁, length(truth.vectors)), I, BᵀB, BᵀB)
+        basis    = RBasis(truth.vectors, fill(μ_start, length(truth.vectors)), I, BᵀB, BᵀB)
         h_cache  = HamiltonianCache(H, basis)
-        new_info = (; iteration=1, err_max=NaN, μ=μ₁, basis, h_cache,
+        new_info = (; iteration=1, err_max=NaN, μ=μ_start, basis, h_cache,
                       t_last=info.t_now, state=:iterate)
         info     = callback(new_info)
     else  # Start from previous assembly

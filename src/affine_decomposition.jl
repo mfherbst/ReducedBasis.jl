@@ -35,11 +35,13 @@ n_terms(ad::AffineDecomposition) = length(ad.terms)
 
 # TODO: fix docs here
 """
+    evaluate(ad::AffineDecomposition, μ)
     (ad::AffineDecomposition)(μ)
 
-Explicitly construct the affine decomposition sum.
+Explicitly evaluate the affine decomposition sum at parameter point `μ`.
 """
-(ad::AffineDecomposition)(μ) = sum(ad.coefficient_map(μ) .* ad.terms)
+evaluate(ad::AffineDecomposition, μ) = sum(ad.coefficient_map(μ) .* ad.terms)
+(ad::AffineDecomposition)(μ) = evaluate(ad, μ)
 
 """
     compress(ad::AffineDecomposition, basis::RBasis)

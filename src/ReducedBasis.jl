@@ -16,7 +16,7 @@ export dimension, n_truthsolve, multiplicity, overlap_matrix, extend
 include("rbasis.jl")
 
 export AffineDecomposition
-export n_terms, compress
+export n_terms, evaluate, compress
 include("affine_decomposition.jl")
 
 export HamiltonianCache

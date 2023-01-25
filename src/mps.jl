@@ -82,15 +82,17 @@ Base.length(o::ApproxMPO) = length(o.mpo)
 Base.size(o::ApproxMPO) = size(o.mpo)
 
 """
+    evaluate(ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}}, μ)
     (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
 
 Compute sum with `ApproxMPO`s using the exact `ITensors` operator sum.
 """
-function (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
+function evaluate(ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}}, μ)
     θ = ad.coefficient_map(μ)
     opsum = sum(c * term.opsum for (c, term) in zip(θ, ad.terms))
     MPO(opsum, last.(siteinds(ad.terms[1].mpo)))
 end
+(ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ) = evaluate(ad, μ)
 
 """
 Solver type for the density matrix renormalization group (DMRG) as implemented
