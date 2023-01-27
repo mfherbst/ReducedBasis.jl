@@ -54,7 +54,6 @@ from the reduced basis using
 ``\\bm{\\Phi}(\\bm{\\mu}) = B \\bm{\\varphi}(\\bm{\\mu})``.
 """
 function interpolate(basis::RBasis, h::AffineDecomposition, μ, _, solver_online)
-    # TODO: How to deal with redundant argument in this case?
     # TODO: benchmark for realistic problems
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
     hcat(basis.snapshots...) * basis.vectors * φ_rb
@@ -62,11 +61,15 @@ end
 
 """
     assemble(H, grid, greedy, solver_truth, compressalg; <keyword arguments>)
+    assemble(info, H, grid, greedy, solver_truth, compressalg; <keyword arguments>)
 
 Assemble an `RBasis` using the greedy strategy and any truth solving method.
 
+If `info` is not provided, start a greedy assembly from scratch.
+
 # Arguments
 
+- `info::NamedTuple`: iteration state from a previous simulation that will be resumed.
 - `H::AffineDecomposition`: Hamiltonian for which a reduced basis is assembled.
 - `grid`: parameter grid that defines the parameter domain.
 - `greedy::Greedy`: greedy strategy containing assembly parameters.
@@ -75,29 +78,14 @@ Assemble an `RBasis` using the greedy strategy and any truth solving method.
 - `compressalg`: compression method for orthogonalization, etc. See also [`extend`](@ref).
 - `solver_online=FullDiagonalization(solver_truth)`: solving method that is used for the RB
   generalized eigenvalue problem.
-- `μ_start=grid[1]`: parameter point of the starting iteration.
 - `callback=print_callback`: callback function that operates on the iteration state during
   assembly. It is possible to chain multiple callback functions using `∘`.
-- `previous_info=nothing`: provide `info` object of a previous basis assembly to resume
-  assembly using the specified arguments above. If `nothing` is provided, then a basis is
-  generated from scratch.
+- `μ_start=grid[1]`: parameter point of the starting iteration, if no `info` is provided.
 """
-function assemble(H::AffineDecomposition, grid, greedy::Greedy, solver_truth, compressalg;
-                  solver_online=FullDiagonalization(solver_truth), μ_start=grid[1],
-                  callback=print_callback, previous_info=nothing)
-    info = callback((; state=:start))  # Initialize info object
-    if isnothing(previous_info)  # First iteration
-        truth    = solve(H, μ_start, nothing, solver_truth)
-        BᵀB      = overlap_matrix(truth.vectors, truth.vectors)
-        basis    = RBasis(truth.vectors, fill(μ_start, length(truth.vectors)), I, BᵀB, BᵀB)
-        h_cache  = HamiltonianCache(H, basis)
-        new_info = (; iteration=1, err_max=NaN, μ=μ_start, basis, h_cache,
-                      t_last=info.t_now, state=:iterate)
-        info     = callback(new_info)
-    else  # Start from previous assembly
-        info = merge(previous_info, (; t_now=info.t_now))  # To correct first time measurement
-    end
-
+function assemble(info::NamedTuple, H::AffineDecomposition, grid, greedy::Greedy, 
+                  solver_truth, compressalg; μ_start=grid[1],
+                  solver_online=FullDiagonalization(solver_truth), callback=print_callback)
+    info = callback(info)
     for n in (info.iteration+1):(greedy.n_truth_max)
         # Compute residual on training grid and find maximum for greedy condition
         err_grid = similar(grid, Float64)
@@ -144,9 +132,9 @@ function assemble(H::AffineDecomposition, grid, greedy::Greedy, solver_truth, co
         h_cache = HamiltonianCache(info.h_cache, ext.basis)
 
         # Update iteration state info
-        new_info = (; iteration=n, err_grid, λ_grid, err_max, μ=μ_next, basis=ext.basis,
-                      h_cache, extend_info=ext, t_last=info.t_now, state=:iterate)
-        info = callback(new_info)
+        info_new = (; iteration=n, err_grid, λ_grid, err_max, μ=μ_next, basis=ext.basis,
+                    cache=info.cache, h_cache, extend_info=ext, state=:iterate)
+        info = callback(info_new)
 
         # Exit iteration if error estimate drops below tolerance
         if err_max < greedy.tol
@@ -155,5 +143,19 @@ function assemble(H::AffineDecomposition, grid, greedy::Greedy, solver_truth, co
         end
     end
 
-    info
+    merge(info, (; state=:end))
+end
+
+function assemble(H::AffineDecomposition, grid, greedy::Greedy, solver_truth, compressalg;
+                  μ_start=grid[1], callback=print_callback, kwargs...)
+    info = callback((; cache=(;), state=:start))
+    if info.state == :start
+        truth   = solve(H, μ_start, nothing, solver_truth)
+        BᵀB     = overlap_matrix(truth.vectors, truth.vectors)
+        basis   = RBasis(truth.vectors, fill(μ_start, length(truth.vectors)), I, BᵀB, BᵀB)
+        h_cache = HamiltonianCache(H, basis)
+        info    = (; iteration=1, err_max=NaN, μ=μ_start, basis, h_cache,
+                   cache=info.cache, state=:iterate)
+    end
+    assemble(info, H, grid, greedy, solver_truth, compressalg; callback, kwargs...)
 end

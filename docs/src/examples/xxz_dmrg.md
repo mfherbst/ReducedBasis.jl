@@ -42,7 +42,7 @@ end
 So let us instantiate such an MPO Hamiltonian where we also specify a singular value `cutoff`, which is passed to the [`ApproxMPO`](@ref) objects:
 
 ```@example xxz_dmrg; continued = true
-L = 12
+L = 18
 sites = siteinds("S=1/2", L)
 H = xxz_chain(sites; cutoff=1e-9)
 ```
@@ -75,7 +75,7 @@ edcomp = EigenDecomposition(; cutoff=1e-7)
 Δ = range(-1.0, 2.5; length=40) # hide
 hJ = range(0.0, 3.5; length=40) # hide
 grid_train = RegularGrid(Δ, hJ) # hide
-greedy = Greedy(; estimator=Residual(), n_truth_max=22, init_from_rb=true) # hide
+greedy = Greedy(; estimator=Residual(), n_truth_max=32, init_from_rb=true) # hide
 ```
 
 Now with different types for the Hamiltonian, the solver and the orthogonalizer, we call `assemble` using the `greedy` strategy and training grid from the last example:
@@ -91,7 +91,7 @@ Again, we want to compute the magnetization so that we can reuse the third term 
 
 ```@example xxz_dmrg; continued = true
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-m = compress(M, basis)
+m, _ = compress(M, basis)
 ```
 
 ```@example xxz_dmrg; continued = true

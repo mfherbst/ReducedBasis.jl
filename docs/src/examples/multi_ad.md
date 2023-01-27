@@ -85,7 +85,7 @@ So let's create the [`AffineDecomposition`](@ref) and compress, exploiting this 
 
 ``` @example multi_ad; continued = true
 SFspin = AffineDecomposition(terms, coefficient_map)
-sfspin = compress(SFspin, basis; symmetric_terms=true)
+sfspin, _ = compress(SFspin, basis; symmetric_terms=true)
 ```
 
 In the online evaluation of the structure factor, we then need to define some wavevector values and compute the structure factor at each of them.
@@ -98,7 +98,7 @@ for (idx, μ) in pairs(grid_online)
     _, φ_rb = solve(h, basis.metric, μ, fulldiag)
     for (i, k) in enumerate(wavevectors)
         sf[i][idx] = sum(eachcol(φ_rb)) do u
-            abs(dot(u, sfspin(k), u))
+            real(dot(u, sfspin(k), u))
         end / size(φ_rb, 2)
     end
 end

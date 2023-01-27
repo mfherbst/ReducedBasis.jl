@@ -1,6 +1,15 @@
+"""
+    Base.truncate(basis::RBasis, n_truth::Int)
+
+Truncate the [`RBasis`](@ref) to `n_truth` snapshots.
+
+Note that `n_truth` does not amount to the dimension of the truncated basis,
+but the number of truth solves included in the basis, which can feature degenerate
+snapshots.
+"""
 function Base.truncate(basis::RBasis, n_truth::Int)
     if n_truth > n_truthsolve(basis)
-        error(ArgumentError("n_truth is larger than the basis number of truth solves"))
+        throw(ArgumentError("n_truth is larger than the basis number of truth solves"))
     end
 
     # Remove last snapshots and parameter vectors (non-mutating)
@@ -25,11 +34,12 @@ function Base.truncate(basis::RBasis, n_truth::Int)
            snapshot_overlaps_trunc, metric_trunc)
 end
 
-function Base.truncate(hc::HamiltonianCache, basis_trunc::RBasis)
-    if n_truth > length(hc.HΨ[1])
-        error(ArgumentError("n_truth is larger than the basis number of truth solves"))
-    end
+"""
+    Base.truncate(hc::HamiltonianCache, basis_trunc::RBasis)
 
+Truncate a [`HamiltonianCache`] according to an already truncated basis.
+"""
+function Base.truncate(hc::HamiltonianCache, basis_trunc::RBasis)
     # Remove last Hamiltonian applications and corresponding matrix elements
     idx_trunc = dimension(basis_trunc)
     HΨ_trunc = [copy(term) for term in hc.HΨ]  # Make non-mutating
@@ -52,11 +62,31 @@ function Base.truncate(hc::HamiltonianCache, basis_trunc::RBasis)
     HamiltonianCache(hc.H, HΨ_trunc, ΨHΨ_trunc, ΨHHΨ_trunc, h_trunc, h²_trunc)
 end
 
-function Base.truncate(
-    ad::AffineDecomposition, basis_trunc::RBasis{V,T,P,<:UniformScaling}
-) where {V,T<:Number,P}
+"""
+    Base.truncate(ad_raw::AffineDecomposition, basis_trunc::RBasis)
+    Base.truncate(ad::AffineDecomposition,
+                  basis_trunc::RBasis{V,T,P,<:UniformScaling}) where {V,T<:Number,P}
+
+Truncate an [`AffineDecomposition`](@ref).
+
+For general [`RBasis`](@ref), the "raw" [`AffineDecomposition`](@ref) has to be provided,
+where `ad_raw.terms` are the matrix elements ``\\Psi_i^\\dagger O_r \\Psi_j``.
+The returned decomposition then contains the fully compressed transformed terms, i.e.
+``B^\\dagger O_r B`` using the truncated basis.
+
+In case a basis is provided that has trivial `vectors=I`, the truncation is performed
+naively on the fully compressed terms.
+"""
+function Base.truncate(ad_raw::AffineDecomposition, basis_trunc::RBasis)
+    idx_trunc = dimension(basis_trunc)
+    V = basis_trunc.vectors
+    terms_trunc = [V' * term[1:idx_trunc, 1:idx_trunc] * V for term in ad_raw.terms]
+    AffineDecomposition(terms_trunc, ad_raw.coefficient_map)
+end
+
+function Base.truncate(ad::AffineDecomposition,
+                       basis_trunc::RBasis{V,T,P,<:UniformScaling}) where {V,T<:Number,P}
     idx_trunc = dimension(basis_trunc)
     AffineDecomposition([term[1:idx_trunc, 1:idx_trunc] for term in ad.terms],
                         ad.coefficient_map)
 end
-# TODO: how to truncate AD with vectors that are not just UniformScaling?

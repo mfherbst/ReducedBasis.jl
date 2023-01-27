@@ -143,14 +143,15 @@ Conveniently, the magnetization already is contained in the third term of ``H``:
 
 ```@example xxz_ed; continued = true
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-m = compress(M, basis)
+m, _ = compress(M, basis)
 ```
 
 Note that the compression again produces an [`AffineDecomposition`](@ref) which now contains only the low-dimensional matrices that operate in reduced basis space.
+In addition to the compressed observable, [`compress`](@ref) also returns a second decomposition for analysis purposes, which we will not cover in this example and hence did not assign.
 Since the coefficient ``2L^{-1}`` is actually parameter-independent, we can just construct `m` at some parameter point to obtain the reduced magnetization matrix for all parameters:
 
 ```@example xxz_ed; continued = true
-m_reduced = m([1])
+m_reduced = m([])
 ```
 
 ## Online phase

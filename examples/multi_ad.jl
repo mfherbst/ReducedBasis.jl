@@ -1,7 +1,4 @@
-using LinearAlgebra
-using SparseArrays
-using Plots
-using ReducedBasis
+using LinearAlgebra, SparseArrays, Plots, ReducedBasis
 
 # Define Pauli matrices
 σx = sparse([0.0 1.0; 1.0 0.0])
@@ -49,7 +46,7 @@ terms = map(idx -> to_global(σz, L, first(idx.I)) * to_global(σz, L, last(idx.
 coefficient_map = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
                            CartesianIndices((1:L, 1:L)))
 SFspin = AffineDecomposition(terms, coefficient_map)
-sfspin = compress(SFspin, basis; symmetric_terms=true)
+sfspin, _ = compress(SFspin, basis; symmetric_terms=true)
 
 # Online phase
 Δ_online = range(first(Δ), last(Δ); length=100)

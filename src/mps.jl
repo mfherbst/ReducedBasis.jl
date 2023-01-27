@@ -71,8 +71,8 @@ Apply `o.mpo` to `mps` using the truncation arguments contained in `o`.
 """
 function Base.:*(o::ApproxMPO, mps::MPS)
     apply(
-          # TODO If the extra args are just collected in a kwarg struct, they can just be
-          #      passed through, which is more general and extensible
+          # TODO: If the extra args are just collected in a kwarg struct, they can just be
+          #       passed through, which is more general and extensible
         o.mpo, mps; cutoff=o.cutoff, maxdim=o.maxdim, mindim=o.mindim, truncate=o.truncate,
     )
 end
@@ -82,17 +82,15 @@ Base.length(o::ApproxMPO) = length(o.mpo)
 Base.size(o::ApproxMPO) = size(o.mpo)
 
 """
-    evaluate(ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}}, μ)
     (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
 
 Compute sum with `ApproxMPO`s using the exact `ITensors` operator sum.
 """
-function evaluate(ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}}, μ)
+function (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
     θ = ad.coefficient_map(μ)
     opsum = sum(c * term.opsum for (c, term) in zip(θ, ad.terms))
     MPO(opsum, last.(siteinds(ad.terms[1].mpo)))
 end
-(ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ) = evaluate(ad, μ)
 
 """
 Solver type for the density matrix renormalization group (DMRG) as implemented
@@ -149,8 +147,8 @@ Solve using [`DMRG`](@ref). When `nothing` is provided as an initial guess,
 function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm::DMRG)
     if isnothing(Ψ₀)
         # last.(siteinds(...)) for two physical indices per tensor, last for non-primed index
-        Ψ₀ = fill(randomMPS(last.(siteinds(H.terms[1].mpo)); linkdims=dm.sweeps.maxdim[1]),
-                  dm.n_states)
+        Ψ₀ = fill(randomMPS(last.(siteinds(H.terms[1].mpo));
+                  linkdims=dm.sweeps.maxdim[1]), dm.n_states)
     end
     observer = dm.observer()
     H_full = H(μ)

@@ -33,15 +33,13 @@ Base.size(ad::AffineDecomposition, i::Int) = size(ad.terms[1], i)
 
 n_terms(ad::AffineDecomposition) = length(ad.terms)
 
-# TODO: fix docs here
+# TODO: fix docs here -> use DocStringExtensions
 """
-    evaluate(ad::AffineDecomposition, μ)
     (ad::AffineDecomposition)(μ)
 
 Explicitly evaluate the affine decomposition sum at parameter point `μ`.
 """
-evaluate(ad::AffineDecomposition, μ) = sum(ad.coefficient_map(μ) .* ad.terms)
-(ad::AffineDecomposition)(μ) = evaluate(ad, μ)
+(ad::AffineDecomposition)(μ) = sum(ad.coefficient_map(μ) .* ad.terms)
 
 """
     compress(ad::AffineDecomposition, basis::RBasis)
@@ -50,7 +48,10 @@ Perform the compression of an [`AffineDecomposition`](@ref)
 corresponding to ``o = B^\\dagger O B``.
 """
 function compress(ad::AffineDecomposition, basis::RBasis)
-    AffineDecomposition(compress.(ad.terms, Ref(basis)), ad.coefficient_map)
+    matrixel = compress.(ad.terms, Ref(basis.snapshots))  # ⟨ψᵢ|O|ψⱼ⟩
+    rbterms = map(m -> basis.vectors' * m * basis.vectors, matrixel)  # transform to RB
+    (; rb=AffineDecomposition(rbterms, ad.coefficient_map),
+     raw=AffineDecomposition(matrixel, ad.coefficient_map))
 end
 
 """
@@ -64,39 +65,42 @@ such that only the necessary compressions are computed.
 """
 function compress(ad::AffineDecomposition{<:Matrix,<:Function},
                   basis::RBasis; symmetric_terms=false)
+    # TODO: replace symmetric_terms by some generalized Symmetric type in the long run
     if symmetric_terms
-        terms = Matrix{Matrix}(undef, size(ad.terms))
-        for i = 1:size(ad.terms, 1), j = 1:size(ad.terms, 2)
-            if i > j  # Exploit symmetry
-                terms[i, j] = terms[j, i]
-                continue
+        ⪒(a, b) = (size(ad.terms, 1) > size(ad.terms, 2)) ? ≥(a, b) : ≤(a, b)
+        matrixel = map(CartesianIndices(ad.terms)) do idx
+            if ⪒(first(idx.I), last(idx.I))  # Upper/lower triangle
+                return compress(ad.terms[idx], basis.snapshots)
             end
-            terms[i, j] = compress(ad.terms[i, j], basis)
         end
+        for idx in findall(x -> isnothing(x), matrixel)
+            matrixel[idx] = matrixel[last(idx.I), first(idx.I)]
+        end  # Use "symmetry" to set transposed elements
+        matrixel = promote_type.(matrixel)  # Promote to common floating-point type
     else
-        terms = compress.(ad.terms, Ref(basis))
+        matrixel = compress.(ad.terms, Ref(basis.snapshots))
     end
-    AffineDecomposition(terms, ad.coefficient_map)
+    rbterms = map(m -> basis.vectors' * m * basis.vectors, matrixel)
+    (; rb=AffineDecomposition(rbterms, ad.coefficient_map),
+     raw=AffineDecomposition(matrixel, ad.coefficient_map))
 end
 
 """
-    compress(op, basis::RBasis)
+    compress(op, snapshots::AbstractVector)
 
 Compress one term of an [`AffineDecomposition`](@ref) `ApproxMPO` type.
 """
-function compress(op, basis::RBasis)
-    term = overlap_matrix(basis.snapshots, map(Ψ -> op * Ψ, basis.snapshots))
-    basis.vectors' * term * basis.vectors
+function compress(op, snapshots::AbstractVector)
+    overlap_matrix(snapshots, map(Ψ -> op * Ψ, snapshots))
 end
 
 """
-    compress(M::AbstractMatrix, basis::RBasis{<:AbstractVector})
+    compress(M::AbstractMatrix, snapshots::AbstractVector{<:AbstractVector})
 
 Compress term using matrix multiplications.
 """
-function compress(M::AbstractMatrix, basis::RBasis{<:AbstractVector})
-    # `hcat` memory bottleneck for large problems?
-    # TODO: benchmark for realistic problems
-    B = hcat(basis.snapshots...) * basis.vectors
-    B' * M * B
+function compress(op::AbstractMatrix, snapshots::AbstractVector{<:AbstractVector})
+    # TODO: `hcat` memory bottleneck for large problems? -> benchmark for realistic problems
+    Y = hcat(snapshots...)
+    Y' * op * Y
 end

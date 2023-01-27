@@ -1,7 +1,4 @@
-using LinearAlgebra
-using ITensors
-using Plots
-using ReducedBasis
+using LinearAlgebra, ITensors, Plots, ReducedBasis
 
 function xxz_chain(sites::IndexSet; kwargs...)
     xy_term   = OpSum()
@@ -24,14 +21,14 @@ function xxz_chain(sites::IndexSet; kwargs...)
 end
 
 # Offline parameters
-L = 12
+L = 18
 sites = siteinds("S=1/2", L)
 H = xxz_chain(sites; cutoff=1e-9)
 
 Δ = range(-1.0, 2.5; length=40)
 hJ = range(0.0, 3.5; length=40)
 grid_train = RegularGrid(Δ, hJ)
-greedy = Greedy(; estimator=Residual(), n_truth_max=22, init_from_rb=true)
+greedy = Greedy(; estimator=Residual(), n_truth_max=32, init_from_rb=true)
 dm = DMRG(; n_states=1, tol_degeneracy=0.0,
           sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000),
           observer=() -> DMRGObserver(; energy_tol=1e-9))
@@ -43,8 +40,8 @@ basis = info.basis; h = info.h_cache.h;
 
 # Compress observable
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-m = compress(M, basis)
-m_reduced = m([1])
+m, _ = compress(M, basis)
+m_reduced = m([])
 
 # Online phase
 Δ_online = range(first(Δ), last(Δ); length=100)

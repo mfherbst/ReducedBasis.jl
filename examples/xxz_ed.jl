@@ -1,7 +1,4 @@
-using LinearAlgebra
-using SparseArrays
-using Plots
-using ReducedBasis
+using LinearAlgebra, SparseArrays, Plots, ReducedBasis
 
 # Define Pauli matrices
 σx = sparse([0.0 1.0; 1.0 0.0])
@@ -45,8 +42,8 @@ basis = info.basis; h = info.h_cache.h;
 
 # Compress observable
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-m = compress(M, basis)
-m_reduced = m([1])
+m, _ = compress(M, basis)
+m_reduced = m([])
 
 # Online phase
 Δ_online = range(first(Δ), last(Δ); length=100)

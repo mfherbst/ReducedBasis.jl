@@ -13,16 +13,16 @@ using ReducedBasis
     hJ_on    = range(first(hJ_off), last(hJ_off); length=100)
     grid_on  = RegularGrid(Δ_on, hJ_on)
 
-    greedy = Greedy(;
-        estimator=Residual(), tol=1e-3, n_truth_max=32, init_from_rb=true, verbose=false
-    )
+    greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=32,
+                    init_from_rb=true, verbose=false)
     qrcomp = QRCompress(; tol=1e-10)
-    pod    = POD(; n_truth=32, verbose=false)
+    pod    = POD(; n_vectors=32, verbose=false)
 
     # Check if RB energy differences for subsequent assembly iterations are positive on grid
     function test_variational(ic::InfoCollector)
         E_grids = [map(maximum, λ_grid) for λ_grid in ic.data[:λ_grid]]
-        all_greater_zero = [all(round.(E .- E_grids[end]; digits=12) .≥ 0.0) for E in E_grids]
+        all_greater_zero = [all(round.(E .- E_grids[end]; digits=12) .≥ 0.0)
+                            for E in E_grids]
         @test all(all_greater_zero)
     end
 
@@ -30,13 +30,13 @@ using ReducedBasis
     function test_L6_magn_plateaus(info, solver_truth)
         @testset "Correct magnetization values" begin
             fd = FullDiagonalization(solver_truth)
-            m = compress(M, info.basis)
+            m, _ = compress(M, info.basis)
             m_reduced = m([1])
             magnetization = map(grid_on) do μ
-                _, φ_rb = solve(h, info.basis.metric, μ, fd)
+                _, φ_rb = solve(info.h_cache.h, info.basis.metric, μ, fd)
                 sum(eachcol(φ_rb)) do φ
-                    abs(dot(φ, m_reduced, φ)) / size(φ_rb, 2)
-                end
+                    abs(dot(φ, m_reduced, φ))
+                end / size(φ_rb, 2)
             end
             
             @test magnetization[end, 1] ≈ 0.0  atol=1e-6

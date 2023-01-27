@@ -3,22 +3,23 @@ import Base: @kwdef
 """
 Central type containing snapshots and associated objects that make a reduced basis.
 
-The snapshot vector can be of a generic type `V` and are stored in an `AbstractVector{V}`.
-The associated parameter points of type `P` are contained in `parameters`.
-Note that for snapshots ``\\bm{\\Psi}(\\bm{\\mu}) = (\\Psi_1(\\bm{\\mu}),\\dots,\\Psi_m(\\bm{\\mu}))``
+The snapshot vectors are contained in `snapshots::AbstractVector{V}` where the snapshots
+are of type `V`. Here a "snapshot" refers to all vectors that were obtained from a solve
+at a specific parameter point. Correspondingly, each element in `snapshots` has a parameter
+point in `parameter::Vector{P}`. Note that for snapshots
+``\\bm{\\Psi}(\\bm{\\mu}) = (\\Psi_1(\\bm{\\mu}),\\dots,\\Psi_m(\\bm{\\mu}))``
 of multiplicity ``m`` the parameter point ``\\bm{\\mu}`` is contained ``m`` times.
 
 Treated as a matrix, the reduced basis ``B = \\Upsilon V`` is made up of the snapshot
-vectors as column vectors in ``\\Upsilon``  and vector coefficients ``V``.
-The latter are stored in `vectors`. 
-In the simple case of ``B = \\Upsilon``, one sets `vectors=I`.
+vectors as column vectors in ``\\Upsilon`` and vector coefficients ``V``. The latter are
+stored in `vectors`. In the simple case of ``B = \\Upsilon``, one sets `vectors=I`.
 
 Since the matrix ``B^\\dagger B = V^\\dagger \\Upsilon^\\dagger \\Upsilon V``
 is frequently needed, both the `snapshot_overlaps` ``\\Upsilon^\\dagger \\Upsilon``
 and the `metric` ``B^\\dagger B`` are stored with generic floating-point type `T`.
 """
 struct RBasis{V,T<:Number,P,N}
-    snapshots::AbstractVector{V}  # TODO: Short comment on what these are
+    snapshots::AbstractVector{V}
     parameters::Vector{P}
     vectors::N
     snapshot_overlaps::Matrix{T}
@@ -151,10 +152,13 @@ and appending ``Q`` to snapshots. Modes that have an ``R`` column maximum fallin
 the `qrcomp.tol` tolerance are dropped.
 """
 function extend(basis::RBasis, new_snapshot::AbstractVector, μ, qrcomp::QRCompress)
-    B    = hcat(basis.snapshots...)
-    Ψ    = hcat(new_snapshot...)
-    fact = qr(Ψ - B * (cholesky(basis.metric) \ (B' * Ψ)),  # pivoted QR
-              VERSION < v"1.7" ? Val(true) : ColumnNorm())  # avoid deprecation warning 
+    B = hcat(basis.snapshots...)
+    Ψ = hcat(new_snapshot...)
+    if VERSION ≥ v"1.7"  # Pivoted QR without deprecation warning
+        fact = qr(Ψ - B * (cholesky(basis.metric) \ (B' * Ψ)), ColumnNorm())
+    else
+        fact = qr(Ψ - B * (cholesky(basis.metric) \ (B' * Ψ)), Val(true))
+    end
 
     # Keep orthogonalized vectors of significant norm
     max_per_row = dropdims(maximum(abs, fact.R; dims=2); dims=2)

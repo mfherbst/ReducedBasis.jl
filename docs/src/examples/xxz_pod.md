@@ -74,7 +74,7 @@ basis = info.basis; h = h_cache.h;
 
 ```@example xxz_pod; continued = true
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L]) # hide
-m = compress(M, basis) # hide
+m, _ = compress(M, basis) # hide
 m_reduced = m([1]) # hide
 
 Δ_online = range(first(Δ), last(Δ); length=100) # hide
