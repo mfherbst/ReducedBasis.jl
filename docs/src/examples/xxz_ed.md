@@ -48,7 +48,10 @@ which in this case are ``S=1/2`` operators featuring the [Pauli matrices](https:
 So, let us first define the Pauli matrices as sparse matrices
 
 ```@example xxz_ed; continued = true
-using LinearAlgebra, SparseArrays, Plots, ReducedBasis
+using LinearAlgebra
+using SparseArrays
+using Plots
+using ReducedBasis
 
 σx = sparse([0.0 1.0; 1.0 0.0])
 σy = sparse([0.0 -im; im 0.0])

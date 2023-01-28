@@ -4,12 +4,15 @@ using ReducedBasis: RegularGrid, bounds, in_bounds, shift
 
 @testset "Basic RegularGrid functionality" begin
     for D in 1:3
-        ranges = [range(sort(rand(2))...; length=rand(10:10:30)) for _ in 1:D]
+        bds    = [sort(rand(2)) for _ in 1:D]
+        ranges = [range(b...; length=rand(10:10:30)) for b in bds]
         grid   = RegularGrid(ranges...)
         μ      = rand.(ranges)
 
         @test length(grid) == prod(length.(ranges)) 
         @test size(grid) == Tuple(length.(ranges))
+        @test all(size(grid, i) == length(r) for (i, r) in enumerate(ranges))
+        @test all(all(bfunc .== binit) for (bfunc, binit) in zip(bounds(grid), bds))
         @test in_bounds(μ, grid) == true
         @test in_bounds(2μ / norm(μ), grid) == false
     end
@@ -22,9 +25,8 @@ end
         μ_shift = step.(ranges) / 2
 
         grid_shift_out = shift(grid, μ_shift)
-        @test all(
-            [all(b .< b_shift) for (b, b_shift) in zip(bounds(grid), bounds(grid_shift_out))]
-        )
+        @test all([all(b .< b_shift) for (b, b_shift)
+                   in zip(bounds(grid), bounds(grid_shift_out))])
         @test length(grid) == length(grid_shift_out)
         @test size(grid) == size(grid_shift_out)
 

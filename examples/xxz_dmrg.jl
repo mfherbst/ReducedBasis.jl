@@ -1,4 +1,7 @@
-using LinearAlgebra, ITensors, Plots, ReducedBasis
+using LinearAlgebra
+using ITensors
+using Plots
+using ReducedBasis
 
 function xxz_chain(sites::IndexSet; kwargs...)
     xy_term   = OpSum()

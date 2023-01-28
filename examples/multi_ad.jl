@@ -1,4 +1,7 @@
-using LinearAlgebra, SparseArrays, Plots, ReducedBasis
+using LinearAlgebra
+using SparseArrays
+using Plots
+using ReducedBasis
 
 # Define Pauli matrices
 σx = sparse([0.0 1.0; 1.0 0.0])

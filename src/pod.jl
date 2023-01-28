@@ -15,8 +15,12 @@ end
 """
     assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
 
-Assemble basis using [`POD`](@ref). Only ED solvers such as
-[`FullDiagonalization`](@ref) and [`LOBPCG`](@ref) are supported.
+Assemble basis using [`POD`](@ref).
+
+Only ED solvers such as [`FullDiagonalization`](@ref) and [`LOBPCG`](@ref) are supported.
+The generated [`RBasis`](@ref) will contain `pod.n_vectors` singular vectors in `snapshots`
+and all grid points in `parameters`. This means that `parameters` and `snapshots` generally
+have different lengths.
 """
 function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
     # TODO: This should be solved by a type annotation and an appropriate abstract type

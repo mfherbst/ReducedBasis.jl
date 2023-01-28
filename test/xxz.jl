@@ -141,4 +141,22 @@ using ReducedBasis
             test_L6_magn_plateaus(merge(info, (; h_cache)), lobpcg)
         end
     end
+
+    @testset "print_callback enabled" begin
+        lobpcg = LOBPCG(; n_target=1, tol_degeneracy=1e-4, tol=1e-9)
+        @testset "only print_callback" begin
+            info = assemble(H, grid_off, greedy, lobpcg, qrcomp; callback=print_callback)
+            @test multiplicity(info.basis)[1] > 1
+            test_L6_magn_plateaus(info, lobpcg)
+        end
+        
+        @testset "chained with InfoCollector" begin
+            collector = InfoCollector(:iteration, :err_grid, :err_max, :λ_grid,
+                                      :μ, :basis, :h_cache, :extend_info)
+            info = assemble(H, grid_off, greedy, lobpcg, qrcomp;
+                            callback=collector ∘ print_callback)
+            @test multiplicity(info.basis)[1] > 1
+            test_L6_magn_plateaus(info, lobpcg)
+        end
+    end
 end

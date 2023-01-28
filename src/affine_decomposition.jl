@@ -66,21 +66,22 @@ such that only the necessary compressions are computed.
 function compress(ad::AffineDecomposition{<:Matrix,<:Function},
                   basis::RBasis; symmetric_terms=false)
     # TODO: replace symmetric_terms by some generalized Symmetric type in the long run
-    if symmetric_terms
-        ⪒(a, b) = (size(ad.terms, 1) > size(ad.terms, 2)) ? ≥(a, b) : ≤(a, b)
-        matrixel = map(CartesianIndices(ad.terms)) do idx
-            if ⪒(first(idx.I), last(idx.I))  # Upper/lower triangle
-                return compress(ad.terms[idx], basis.snapshots)
-            end
+    is_nonredundant(a, b) = (size(ad.terms, 1) > size(ad.terms, 2)) ? ≥(a, b) : ≤(a, b)
+    matrixel = map(CartesianIndices(ad.terms)) do idx
+        if is_nonredundant(first(idx.I), last(idx.I))  # Upper/lower triangle
+            return compress(ad.terms[idx], basis.snapshots)
         end
-        for idx in findall(x -> isnothing(x), matrixel)
-            matrixel[idx] = matrixel[last(idx.I), first(idx.I)]
-        end  # Use "symmetry" to set transposed elements
-        matrixel = promote_type.(matrixel)  # Promote to common floating-point type
-    else
-        matrixel = compress.(ad.terms, Ref(basis.snapshots))
     end
+    for idx in findall(isnothing, matrixel)
+        if symmetric_terms
+            matrixel[idx] = matrixel[last(idx.I), first(idx.I)]
+        else
+            matrixel[idx] = compress(ad.terms[idx], basis.snapshots)
+        end
+    end  # Use "symmetry" to set transposed elements
+    matrixel = promote_type.(matrixel)  # Promote to common floating-point type
     rbterms = map(m -> basis.vectors' * m * basis.vectors, matrixel)
+
     (; rb=AffineDecomposition(rbterms, ad.coefficient_map),
      raw=AffineDecomposition(matrixel, ad.coefficient_map))
 end

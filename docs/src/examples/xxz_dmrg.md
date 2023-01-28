@@ -12,7 +12,10 @@ Instead of constructing explicit matrices from Kronecker products as we did befo
 For that purpose, we first import
 
 ```@example xxz_dmrg; continued = true
-using LinearAlgebra, ITensors, Plots, ReducedBasis
+using LinearAlgebra
+using ITensors
+using Plots
+using ReducedBasis
 ```
 
 now featuring `ITensors`.

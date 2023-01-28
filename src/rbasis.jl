@@ -5,10 +5,13 @@ Central type containing snapshots and associated objects that make a reduced bas
 
 The snapshot vectors are contained in `snapshots::AbstractVector{V}` where the snapshots
 are of type `V`. Here a "snapshot" refers to all vectors that were obtained from a solve
-at a specific parameter point. Correspondingly, each element in `snapshots` has a parameter
-point in `parameter::Vector{P}`. Note that for snapshots
-``\\bm{\\Psi}(\\bm{\\mu}) = (\\Psi_1(\\bm{\\mu}),\\dots,\\Psi_m(\\bm{\\mu}))``
+at a specific parameter point. For greedy-generated bases, each element in `snapshots` has
+a parameter point in `parameter::Vector{P}`, i.e. for snapshots
+``\\bm{\\Psi}(\\bm{\\mu_i}) = (\\Psi_1(\\bm{\\mu_i}),\\dots,\\Psi_m(\\bm{\\mu_i}))``
 of multiplicity ``m`` the parameter point ``\\bm{\\mu}`` is contained ``m`` times.
+However, for general basis-assembly strategies this one-to-one correspondence might not
+be true, e.g. for [`POD`](@ref) where `snapshots` contains singular vectors based on
+all truth solves.
 
 Treated as a matrix, the reduced basis ``B = \\Upsilon V`` is made up of the snapshot
 vectors as column vectors in ``\\Upsilon`` and vector coefficients ``V``. The latter are

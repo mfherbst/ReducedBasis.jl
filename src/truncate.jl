@@ -43,7 +43,7 @@ function Base.truncate(hc::HamiltonianCache, basis_trunc::RBasis)
     # Remove last Hamiltonian applications and corresponding matrix elements
     idx_trunc = dimension(basis_trunc)
     HΨ_trunc = [copy(term) for term in hc.HΨ]  # Make non-mutating
-    for q in n_terms(hc.H)
+    for q in 1:n_terms(hc.H)
         splice!(HΨ_trunc[q], (idx_trunc+1):length(HΨ_trunc[q]))
     end
     ΨHΨ_trunc = [term[1:idx_trunc, 1:idx_trunc] for term in hc.ΨHΨ]
