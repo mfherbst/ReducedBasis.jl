@@ -10,7 +10,7 @@ accelerate the solution of a parametrized eigenvalue problems across the
 parameter domain.
 
 In the RBM approach, a surrogate model is assembled by projecting the full
-problem onto a basis consisting of only a few tens of parameter snapshots, the
+problem onto a basis consisting of only a few tens of parameter snapshots.
 The package focuses on a greedy strategy that selects snapshots by maximally
 reducing the estimated error with each additional snapshot.
 Once the RBM surrogate is assembled, observables or post-processing can proceed

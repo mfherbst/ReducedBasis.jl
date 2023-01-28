@@ -24,26 +24,27 @@ function xxz_chain(sites::IndexSet; kwargs...)
 end
 
 # Offline parameters
-L = 12
+L = 18
 sites = siteinds("S=1/2", L)
 H = xxz_chain(sites; cutoff=1e-9)
 
 Δ = range(-1.0, 2.5; length=40)
 hJ = range(0.0, 3.5; length=40)
 grid_train = RegularGrid(Δ, hJ)
-greedy = Greedy(; estimator=Residual(), n_truth_max=22, init_from_rb=true)
+greedy = Greedy(; estimator=Residual(), n_truth_max=32, init_from_rb=true)
 dm = DMRG(; n_states=1, tol_degeneracy=0.0,
           sweeps=default_sweeps(; cutoff_max=1e-9, bonddim_max=1000),
           observer=() -> DMRGObserver(; energy_tol=1e-9))
 edcomp = EigenDecomposition(; cutoff=1e-7)
 
 # Assemble
-basis, h, info = assemble(H, grid_train, greedy, dm, edcomp)
+info = assemble(H, grid_train, greedy, dm, edcomp)
+basis = info.basis; h = info.h_cache.h;
 
 # Compress observable
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-m = compress(M, basis)
-m_reduced = m([1]) # hide
+m, _ = compress(M, basis)
+m_reduced = m([])
 
 # Online phase
 Δ_online = range(first(Δ), last(Δ); length=100)
@@ -53,15 +54,15 @@ fulldiag = FullDiagonalization(dm)
 magnetization = map(grid_online) do μ
     _, φ_rb = solve(h, basis.metric, μ, fulldiag)
     sum(eachcol(φ_rb)) do u
-        abs(dot(u, m_reduced, u)) / size(φ_rb, 2)
-    end
+        abs(dot(u, m_reduced, u))
+    end / size(φ_rb, 2)
 end
 
 # Plot magnetization heatmap and snapshot points
 hm = heatmap(grid_online.ranges[1], grid_online.ranges[2], magnetization';
              xlabel=raw"$\Delta$", ylabel=raw"$h/J$", title="magnetization ",
              colorbar=true, clims=(0.0, 1.0), leg=false)
-plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:fuchsia)
+plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:green)
 params = unique(basis.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
          markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)

@@ -32,17 +32,17 @@ end
 
 # Convenience function for fast generation of XXZ RBasis
 # TODO: replace by some generic, XXZ-independent model
-function fast_assemble(n_truth=20)
+function fast_assemble(n_vectors=20)
     L    = 6
     H    = xxz_chain(L)
     Δ    = range(-1.0, 2.5; length=30)
     hJ   = range(0.0, 3.5; length=30)
     grid = RegularGrid(Δ, hJ)
     
-    pod = POD(; n_truth, verbose=false)
+    pod      = POD(; n_vectors, verbose=false)
     fulldiag = FullDiagonalization(; n_target=1, tol_degeneracy=1e-4)
-    basis, = assemble(H, grid, pod, fulldiag)
-    basis
+    info     = assemble(H, grid, pod, fulldiag)
+    info.basis
 end
 
 include("grid.jl")
@@ -50,4 +50,5 @@ include("affine_decomposition.jl")
 include("rbasis.jl")
 include("xxz.jl")
 include("mps.jl")
+include("truncate.jl")
 include("aqua.jl")

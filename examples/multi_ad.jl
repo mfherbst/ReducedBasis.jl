@@ -43,28 +43,36 @@ qrcomp = QRCompress(; tol=1e-9)
 info = assemble(H, grid_train, greedy, lobpcg, qrcomp)
 basis = info.basis; h = info.h_cache.h;
 
-# Compress observable
-M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-m, _ = compress(M, basis)
-m_reduced = m([])
+# Observables
+terms = map(idx -> to_global(σz, L, first(idx.I)) * to_global(σz, L, last(idx.I)),
+            CartesianIndices((1:L, 1:L)))
+coefficient_map = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
+                           CartesianIndices((1:L, 1:L)))
+SFspin = AffineDecomposition(terms, coefficient_map)
+sfspin, _ = compress(SFspin, basis; symmetric_terms=true)
 
 # Online phase
 Δ_online = range(first(Δ), last(Δ); length=100)
 hJ_online = range(first(hJ), last(hJ); length=100)
 grid_online = RegularGrid(Δ_online, hJ_online)
 fulldiag = FullDiagonalization(lobpcg)
-magnetization = map(grid_online) do μ
+
+wavevectors = [0.0, π/4, π/2, π]
+sf = [zeros(size(grid_online)) for _ in 1:length(wavevectors)]
+for (idx, μ) in pairs(grid_online)
     _, φ_rb = solve(h, basis.metric, μ, fulldiag)
-    sum(eachcol(φ_rb)) do u
-        abs(dot(u, m_reduced, u))
-    end / size(φ_rb, 2)
+    for (i, k) in enumerate(wavevectors)
+        sf[i][idx] = sum(eachcol(φ_rb)) do u
+            abs(dot(u, sfspin(k), u))
+        end / size(φ_rb, 2)
+    end
 end
 
 # Plot magnetization heatmap and snapshot points
-hm = heatmap(grid_online.ranges[1], grid_online.ranges[2], magnetization';
-             xlabel=raw"$\Delta$", ylabel=raw"$h/J$", title="magnetization",
-             colorbar=true, clims=(0.0, 1.0), leg=false)
-plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color=:green)
-params = unique(basis.parameters)
-scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
-         markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)
+kwargs = (; xlabel=raw"$\Delta$", ylabel=raw"$h/J$", colorbar=true, leg=false)
+hms = []
+for (i, q) in enumerate(wavevectors)
+    push!(hms, heatmap(grid_online.ranges[1], grid_online.ranges[2], sf[i]'; 
+                       title="\$k = $(round(q/π; digits=3))\\pi\$", kwargs...))
+end
+plot(hms...)

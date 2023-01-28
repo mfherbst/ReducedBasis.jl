@@ -5,6 +5,7 @@ struct RegularGrid{D,N<:Number} <: AbstractArray{SVector{D,N},D}
     points::Array{SVector{D,N},D}
     ranges::Vector{StepRangeLen}
 end
+
 """
     RegularGrid(ranges::StepRangeLen...)
 
@@ -21,21 +22,12 @@ function RegularGrid(ranges::StepRangeLen...)
     RegularGrid{Dim,T}(points, [ranges...])
 end
 
-"""
-    Base.length(grid::RegularGrid)
-
-Compute the total number of grid points.
-"""
 Base.length(grid::RegularGrid) = length(grid.points)
-"""
-    size(grid::RegularGrid)
-    size(grid::RegularGrid, i::Int)
 
-Return grid size, i.e. the number of grid points per dimension.
-Alternatively return only for specified dimension `i`.
-"""
 Base.size(grid::RegularGrid) = size(grid.points)
+
 Base.size(grid::RegularGrid, i::Int) = size(grid.points, i)
+
 Base.getindex(grid::RegularGrid, args...) = getindex(grid.points, args...)
 
 """
@@ -44,7 +36,7 @@ Base.getindex(grid::RegularGrid, args...) = getindex(grid.points, args...)
 Return `SVector` of grid boundaries.
 """
 function bounds(grid::RegularGrid{D}) where {D}
-    # TODO This looks too complicated
+    # TODO: This looks too complicated
     SVector{D}([(first(r), last(r)) for r in grid.ranges])
 end
 
@@ -54,8 +46,7 @@ end
 Check whether a given parameter point `μ` is in the convex hull of the grid.
 """
 function in_bounds(μ, grid::RegularGrid)
-    # TODO Should not need a list here
-    all([first(r) ≤ p ≤ last(r) for (p, r) in zip(μ, grid.ranges)])
+    all(first(r) ≤ p ≤ last(r) for (p, r) in zip(μ, grid.ranges))
 end
 
 """
@@ -68,7 +59,7 @@ Note that the shift vector elements cannot be larger than the `grid.ranges` step
 function shift(grid::RegularGrid{D,N}, μ_shift; stay_in_bounds=false) where {D,N}
     if stay_in_bounds
         if !all(μ_shift .< step.(grid.ranges))
-            throw(ArgumentError("Shift vector extends out of unit cell"))
+            throw(ArgumentError("shift vector extends out of unit cell"))
         end
         ranges_shifted = [
             (ra .+ μ_shift[d])[1:(end-1)] for (d, ra) in enumerate(grid.ranges)

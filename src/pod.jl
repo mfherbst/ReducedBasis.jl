@@ -3,25 +3,30 @@ Proper orthogonal decomposition assembly strategy.
 
 # Fields
 
-- `n_truth::Int=64`: number of included truth solves in the returned basis.
+- `n_vectors::Int`: number of retained singular vectors of the snapshot matrix in the
+  returned basis.
 - `verbose::Bool=true`: shows the truth solve progress if `true`.
 """
 @kwdef struct POD
-    n_truth::Int = 64
+    n_vectors::Int
     verbose::Bool = true
 end
 
 """
     assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
 
-Assemble basis using [`POD`](@ref). Only ED solvers such as
-[`FullDiagonalization`](@ref) and [`LOBPCG`](@ref) are supported.
+Assemble basis using [`POD`](@ref).
+
+Only ED solvers such as [`FullDiagonalization`](@ref) and [`LOBPCG`](@ref) are supported.
+The generated [`RBasis`](@ref) will contain `pod.n_vectors` singular vectors in `snapshots`
+and all grid points in `parameters`. This means that `parameters` and `snapshots` generally
+have different lengths.
 """
 function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
-    # TODO This should be solved by a type annotation and an appropriate abstract type
-    #      and not an assertion
+    # TODO: This should be solved by a type annotation and an appropriate abstract type
+    #       and not an assertion
     (solver_truth isa DMRG) && ArgumentError("Only ED solvers are supported.")
-    @assert pod.n_truth ≤ length(grid) && pod.n_truth ≤ size(H, 1)
+    @assert pod.n_vectors ≤ length(grid) && pod.n_vectors ≤ size(H, 1)
 
     # Compute truth solution on all points of the grid
     vectors = Vector{Matrix}(undef, length(grid))
@@ -41,11 +46,11 @@ function assemble(H::AffineDecomposition, grid, pod::POD, solver_truth)
 
     # Extract reduced basis with desired number of truth solves
     mult      = [count(isequal(μ), parameters) for μ in unique(parameters)]
-    idx_trunc = sum(@view(mult[1:(pod.n_truth)]))
+    idx_trunc = sum(@view(mult[1:(pod.n_vectors)]))
     snapshots = [U[:, i] for i in 1:idx_trunc]
     U_trunc   = @view U[:, 1:idx_trunc]
     BᵀB       = U_trunc' * U_trunc
     basis     = RBasis(snapshots, parameters, I, BᵀB, BᵀB)
 
-    basis, (; U, Σ, V)
+    (; basis, U, Σ, V)
 end

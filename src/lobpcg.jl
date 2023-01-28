@@ -37,7 +37,8 @@ Currently uses the DFTK [`lobpcg_hyper`](https://github.com/JuliaMolSim/DFTK.jl/
 - `n_ep_extra::Int=4`: number of extra eigenpairs that are kept to improve convergence.
 - `shift::Float64=-100`: eigenvalue shift.
 - `verbose::Bool=false`: if `true`, print convergence messages.
-- `dense_fallback::Bool=true`: if `false`, also non-converged states will be accepted. Otherwise `LinearAlgebra.eigen` is used for non-converged iterations.
+- `dense_fallback::Bool=true`: if `false`, also non-converged states will be accepted.
+  Otherwise `LinearAlgebra.eigen` is used for non-converged iterations.
 - `maxdiagonal::Int=400`
 """
 @kwdef struct LOBPCG
@@ -45,7 +46,7 @@ Currently uses the DFTK [`lobpcg_hyper`](https://github.com/JuliaMolSim/DFTK.jl/
     tol_degeneracy::Float64 = 0.0
     tol::Float64 = 1e-9
     maxiter::Int = 300
-    n_ep_extra::Int = 4 # Extra eigenpairs to improve convergence rate
+    n_ep_extra::Int = 4
     shift::Float64 = -100
     verbose::Bool = false
     dense_fallback::Bool = true
@@ -55,7 +56,8 @@ end
 """
     FullDiagonalization(lobpcg::LOBPCG) 
 
-Construct the [`FullDiagonalization`](@ref) solver with degeneracy settings matching `lobpcg`.
+Construct the [`FullDiagonalization`](@ref) solver with degeneracy settings matching
+`lobpcg`.
 """
 function FullDiagonalization(lobpcg::LOBPCG)
     FullDiagonalization(; n_target=lobpcg.n_target, tol_degeneracy=lobpcg.tol_degeneracy)
@@ -73,9 +75,14 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
         n_states = lobpcg.n_target + lobpcg.n_ep_extra
         Ψ₀ = Matrix(qr(randn(ComplexF64, size(H, 1), n_states)).Q)
     else
-        @assert size(Ψ₀, 1) == size(H, 1)
-        # TODO Why is this commented out?
-        # @assert size(Ψ₀, 2) ≥ lobpcg.n_target + lobpcg.n_ep_extra
+        !(size(Ψ₀, 1) == size(H, 1)) && error("Ψ₀ and H dimensions don't match")
+        if size(Ψ₀, 2) < lobpcg.n_target + lobpcg.n_ep_extra
+            Ψ₀_extra = randn(ComplexF64, size(Ψ₀, 1),
+                             lobpcg.n_target + lobpcg.n_ep_extra - size(Ψ₀, 2))
+            Ψ₀_extra .-= Ψ₀ * (Ψ₀' * Ψ₀_extra)  # Project to orthogonal complement
+            Ψ₀_extra = Matrix(qr(Ψ₀_extra).Q)  # Orthonormalize via QR
+            Ψ₀ = hcat(Ψ₀, Ψ₀_extra)
+        end
     end
 
     # Assemble Hamiltonian for parameter value μ
@@ -110,24 +117,18 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
         n_conv_check = max(n_last, n_conv_check)
 
         if n_conv_check < size(res.X, 2) &&
-           all(res.residual_norms[1:n_conv_check] .< lobpcg.tol)
+            all(res.residual_norms[1:n_conv_check] .< lobpcg.tol)
             # All relevant eigenpairs are converged
             lobpcg.verbose && println("converged in $iterations iterations")
-            return (
-                values=res.λ[1:n_last] .- lobpcg.shift,
-                vectors=[res.X[:, i] for i in 1:n_last],
-                converged=true,
-                iterations=iterations,
-                X=res.X,
-                λ=res.λ .- lobpcg.shift,
-            )
+            return (values=res.λ[1:n_last] .- lobpcg.shift,
+                    vectors=[res.X[:, i] for i in 1:n_last],
+                    converged=true, iterations=iterations,
+                    X=res.X, λ=res.λ .- lobpcg.shift)
         end
 
         if n_conv_check + lobpcg.n_ep_extra > size(res.X, 2)
-            Ψ₀_extra = randn(
-                ComplexF64, size(Ψ₀, 1),
-                n_conv_check + lobpcg.n_ep_extra - size(res.X, 2),
-            )
+            Ψ₀_extra = randn(ComplexF64, size(Ψ₀, 1),
+                             n_conv_check + lobpcg.n_ep_extra - size(res.X, 2))
             Ψ₀_extra .-= Ψ₀ * (Ψ₀' * Ψ₀_extra)
             Ψ₀_extra = Matrix(qr(Ψ₀_extra).Q)
             Ψ₀ = hcat(res.X, Ψ₀_extra)
@@ -138,14 +139,10 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
 
     if !lobpcg.dense_fallback
         @warn "accepting non-converged state"
-        return (
-            values=res.λ[1:n_last] .- lobpcg.shift,
-            vectors=[res.X[:, i] for i in 1:n_last],
-            converged=false,
-            iterations=iterations,
-            X=res.X,
-            λ=res.λ .- shift,
-        )
+        return (values=res.λ[1:n_last] .- lobpcg.shift,
+                vectors=[res.X[:, i] for i in 1:n_last],
+                converged=false, iterations=iterations,
+                X=res.X, λ=res.λ .- shift)
     else
         lobpcg.verbose && @warn "falling back to dense diagonalization"
         val, vec = eigen(Hermitian(Matrix(H_shifted)), 1:size(Ψ₀, 2))
@@ -154,13 +151,9 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
             n_last = findlast(abs.(val .- val[lobpcg.n_target]) .< lobpcg.tol_degeneracy)
         end
 
-        return (
-            values=val[1:n_last] .- lobpcg.shift,
-            vectors=[vec[:, i] for i in 1:n_last],
-            converged=true,
-            iterations=iterations,
-            X=vec,
-            λ=val .- lobpcg.shift,
-        )
+        return (values=val[1:n_last] .- lobpcg.shift,
+                vectors=[vec[:, i] for i in 1:n_last],
+                converged=true, iterations=iterations,
+                X=vec, λ=val .- lobpcg.shift)
     end
 end
