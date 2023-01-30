@@ -43,10 +43,16 @@ function to_global(op::M, L::Int, i::Int) where {M<:AbstractMatrix}
 end
 
 function xxz_chain(L)
-    H1 = 0.25 * sum([  to_global(σx, L, i) * to_global(σx, L, i + 1)
-                     + to_global(σy, L, i) * to_global(σy, L, i + 1) for i in 1:L-1])
-    H2 = 0.25 * sum([to_global(σz, L, i) * to_global(σz, L, i + 1)   for i in 1:L-1])
-    H3 = 0.5  * sum([to_global(σz, L, i) for i in 1:L])
+    H1 = 0.25 * sum(1:L-1) do i
+          to_global(σx, L, i) * to_global(σx, L, i + 1)
+        + to_global(σy, L, i) * to_global(σy, L, i + 1)
+    end
+    H2 = 0.25 * sum(1:L-1) do i
+        to_global(σz, L, i) * to_global(σz, L, i + 1)
+    end
+    H3 = 0.5  * sum(1:L) do i
+        to_global(σz, L, i)
+    end
     AffineDecomposition([H1, H2, H3], μ -> [1.0, μ[1], -μ[2]])
 end
 
