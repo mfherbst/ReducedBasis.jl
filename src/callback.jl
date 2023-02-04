@@ -41,6 +41,7 @@ state object. Possible fields to select from are:
 - `err_grid`: error estimate on all parameter points of the training grid.
 - `err_max`: maximal error estimate on the grid.
 - `λ_grid`: RB energies on all training grid points.
+- `φ_grid`: RB vectors on all training grid points.
 - `μ`: parameter point at which truth solve has been performed.
 - `basis`: `RBasis` at the current iteration.
 - `h_cache`: `HamiltonianCache` at the current iteration.

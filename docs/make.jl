@@ -20,6 +20,7 @@ PAGES = [
         "examples/xxz_dmrg.jl",
         "examples/xxz_pod.jl",
         "examples/multi_ad.jl",
+        "examples/basis_analysis.jl"
     ],
     "api.md",
 ]
