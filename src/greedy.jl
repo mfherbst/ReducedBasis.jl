@@ -83,21 +83,24 @@ If `info` is not provided, start a greedy assembly from scratch.
 - `μ_start=grid[1]`: parameter point of the starting iteration, if no `info` is provided.
 """
 function assemble(info::NamedTuple, H::AffineDecomposition, grid, greedy::Greedy, 
-                  solver_truth, compressalg; μ_start=grid[1],
-                  solver_online=FullDiagonalization(solver_truth), callback=print_callback)
+                  solver_truth, compressalg; callback=print_callback,
+                  solver_online=FullDiagonalization(solver_truth))
     info = callback(info)
     for n in (info.iteration+1):(greedy.n_truth_max)
         # Compute residual on training grid and find maximum for greedy condition
         err_grid = similar(grid, Float64)
         λ_grid   = similar(grid, Vector{Float64})
+        φ_grid   = similar(grid, Matrix{ComplexF64})
         for (idx, μ) in pairs(grid)
             sol = solve(info.h_cache.h, info.basis.metric, μ, solver_online)
             λ_grid[idx] = sol.values
+            φ_grid[idx] = sol.vectors
             err_grid[idx] = estimate_error(greedy.estimator, μ, info.h_cache,
                                            info.basis, sol)
         end
         err_max, idx_max = findmax(err_grid)
         μ_next = grid[idx_max]
+
         # Exit: μ_next has already been solved
         if greedy.exit_checks && μ_next ∈ info.basis.parameters
             greedy.verbose && @warn "μ=$μ_next has already been solved"
@@ -122,6 +125,7 @@ function assemble(info::NamedTuple, H::AffineDecomposition, grid, greedy::Greedy
                 @warn "stopped assembly due to ill-conditioned BᵀB" metric_condition
             break
         end
+
         # Exit: no vector was appended to basis
         if greedy.exit_checks && dimension(ext.basis) == dimension(info.basis)
             greedy.verbose && @warn "stopped assembly since new snapshot was insignificant"
@@ -132,8 +136,9 @@ function assemble(info::NamedTuple, H::AffineDecomposition, grid, greedy::Greedy
         h_cache = HamiltonianCache(info.h_cache, ext.basis)
 
         # Update iteration state info
-        info_new = (; iteration=n, err_grid, λ_grid, err_max, μ=μ_next, basis=ext.basis,
-                    cache=info.cache, h_cache, extend_info=ext, state=:iterate)
+        info_new = (; iteration=n, err_grid, λ_grid, φ_grid, err_max, μ=μ_next,
+                    basis=ext.basis, cache=info.cache, h_cache, extend_info=ext, 
+                    state=:iterate)
         info = callback(info_new)
 
         # Exit iteration if error estimate drops below tolerance
