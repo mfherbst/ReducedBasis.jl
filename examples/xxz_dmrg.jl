@@ -12,11 +12,16 @@
 # Let us begin by building the XXZ Hamiltonian. Instead of constructing explicit matrices
 # from Kronecker products as we did before, we now use a tensor format called
 # *matrix product operators* (MPOs) to represent the Hamiltonian.
+#
+# !!! note "Random seed"
+#     In order to make the automatically generated documentation examples that utilize
+#     `ITensors` and in particular random initial states consistent and deterministic,
+#     we initialize the random number generator by calling `Random.seed!`.
 
 using ITensors
 using ReducedBasis
 using Random: seed!
-seed!(0);  # seed to make example consistent
+seed!(0);
 
 # To build the Hamiltonian terms as MPOs, we make use of the `ITensors.OpSum()` object that
 # automatically produces an MPO from a string of operators. The affine MPO terms are then
@@ -34,11 +39,10 @@ function xxz_chain(sites::IndexSet; kwargs...)
         magn_term += "Sz", i
     end
     magn_term += "Sz", length(sites)  # Add last magnetization term
-    coefficient_map = μ -> [1.0, μ[1], -μ[2]]
     AffineDecomposition([ApproxMPO(MPO(xy_term, sites), xy_term; kwargs...),
                          ApproxMPO(MPO(zz_term, sites), zz_term; kwargs...),
                          ApproxMPO(MPO(magn_term, sites), magn_term; kwargs...)],
-                        coefficient_map)
+                        μ -> [1.0, μ[1], -μ[2]])
 end;
 
 # So let us instantiate such an MPO Hamiltonian where we also specify a singular value
@@ -59,13 +63,16 @@ H = xxz_chain(sites; cutoff=1e-9);
 # format, namely as a *matrix product state* (MPS). This is achieved by `ITensors.dmrg`
 # which is wrapped in the [`DMRG`](@ref) solver type:
 
-dm = DMRG(; n_states=1, tol_degeneracy=0.0, sweeps=default_sweeps(; cutoff_max=1e-9),
+dm = DMRG(; sweeps=default_sweeps(; cutoff_max=1e-9),
           observer=() -> DMRGObserver(; energy_tol=1e-9));
 
-# While the implemented DMRG solver is capable of solving degenerate ground states, we here
-# opt for non-degenerate settings, i.e. `n_states=1` and `tol_degeneracy=0.0`. (We do this
-# due to a ``L+1``-fold degeneracy on the parameter domain, where the degenerate DMRG solver
-# can produce instable results for larger ``L``.)
+# For each solve a new `ITensors.DMRGObserver` object is created that converges the DMRG 
+# iteration up the specified `energy_tol`. The sweeps argument takes any `ITensors.Sweeps`
+# object that controls the approximation settings with respect to the DMRG sweeps.
+# While the implemented DMRG solver is capable of also solving degenerate ground states,
+# we here opt for the default settings, which perform a non-degenerate DMRG solve (We do
+# this due to a ``L+1``-fold degeneracy on the parameter domain, where the degenerate DMRG
+# solver can produce instable results for larger ``L``.)
 # 
 # As discussed in the last example, we need a way to orthogonalize the reduced basis. Due to
 # the MPS format that the snapshots will have, we cannot use QR decompositions anymore and
@@ -76,14 +83,16 @@ dm = DMRG(; n_states=1, tol_degeneracy=0.0, sweeps=default_sweeps(; cutoff_max=1
 edcomp = EigenDecomposition(; cutoff=1e-7);
 
 # Now with different types for the Hamiltonian, the solver and the orthogonalizer, we call
-# `assemble` using the `greedy` strategy and training grid from the last example:
+# `assemble` using the `greedy` strategy and training grid from the last example. However,
+# instead of specifying a tolerance for the maximal error estimate of our basis, we now set
+# a maximal number of performed truth solves via `n_truth_max`:
 
 Δ = range(-1.0, 2.5; length=40)
 hJ = range(0.0, 3.5; length=40)
 grid_train = RegularGrid(Δ, hJ)
-greedy = Greedy(; estimator=Residual(), n_truth_max=24, init_from_rb=true)
+greedy = Greedy(; estimator=Residual(), n_truth_max=24)
 
-result = assemble(H, grid_train, greedy, dm, edcomp);
+rbres = assemble(H, grid_train, greedy, dm, edcomp);
 
 # The returned `basis` now has snapshot vectors of `ITensors.MPS` type, which we have to
 # keep in mind when we want to compress observables. That is to say, the observables have
@@ -91,8 +100,8 @@ result = assemble(H, grid_train, greedy, dm, edcomp);
 # we did for the Hamiltonian. Again, we want to compute the magnetization so that we can
 # reuse the third term of `H`:
 
-M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-m, _ = compress(M, result.basis);
+M    = AffineDecomposition([H.terms[3]], μ -> [2 / L])
+m, _ = compress(M, rbres.basis);
 
 # And at that point, we continue as before since we have arrived at the online phase where
 # we only operate in the low-dimensional reduced basis space, agnostic of the snapshot
@@ -112,7 +121,7 @@ grid_online = RegularGrid(Δ_online, hJ_online)
 
 using Statistics
 magnetization = map(grid_online) do μ
-    _, φ_rb = solve(result.h_cache.h, result.basis.metric, μ, fulldiag)
+    _, φ_rb = solve(rbres.h_cache.h, rbres.basis.metric, μ, fulldiag)
     mean(u -> abs(dot(u, m_reduced, u)), eachcol(φ_rb))
 end;
 
@@ -122,7 +131,7 @@ using Plots
 hm = heatmap(grid_online.ranges[1], grid_online.ranges[2], magnetization';
              xlabel=raw"$\Delta$", ylabel=raw"$h/J$", title="magnetization",
              colorbar=true, clims=(0.0, 1.0), leg=false)
-params = unique(result.basis.parameters)
+params = unique(rbres.basis.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
          markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)
 

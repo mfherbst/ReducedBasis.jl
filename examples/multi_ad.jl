@@ -69,10 +69,10 @@ H = xxz_chain(L);
 Δ  = range(-1.0, 2.5; length=40)
 hJ = range( 0.0, 3.5; length=40)
 grid_train = RegularGrid(Δ, hJ)
-greedy = Greedy(; estimator=Residual(), tol=1e-3, init_from_rb=true)
-lobpcg = LOBPCG(; n_target=1, tol_degeneracy=1e-4, tol=1e-9)
+greedy = Greedy(; estimator=Residual())
+lobpcg = LOBPCG(; tol_degeneracy=1e-4)
 qrcomp = QRCompress(; tol=1e-9)
-result = assemble(H, grid_train, greedy, lobpcg, qrcomp);
+rbres = assemble(H, grid_train, greedy, lobpcg, qrcomp);
 
 # Now the task is to implement the double-sum in ``\mathcal{S}``, as well as the
 # ``k``-dependency in the coefficients. The double-sum can be encoded by putting all
@@ -95,7 +95,7 @@ coefficient_map = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
 # this symmetry using the `symmetric_terms` keyword argument:
 
 SFspin    = AffineDecomposition(terms, coefficient_map)
-sfspin, _ = compress(SFspin, result.basis; symmetric_terms=true);
+sfspin, _ = compress(SFspin, rbres.basis; symmetric_terms=true);
 
 # In the online evaluation of the structure factor, we then need to define some wavevector
 # values and compute the structure factor at each of them. As usual, we first define a
@@ -113,7 +113,7 @@ using Statistics
 wavevectors = [0.0, π/4, π/2, π]
 sf = [zeros(size(grid_online)) for _ in 1:length(wavevectors)]
 for (idx, μ) in pairs(grid_online)
-    _, φ_rb = solve(result.h_cache.h, result.basis.metric, μ, fulldiag)
+    _, φ_rb = solve(rbres.h_cache.h, rbres.basis.metric, μ, fulldiag)
     for (i, k) in enumerate(wavevectors)
         sf[i][idx] = mean(u -> real(dot(u, sfspin(k), u)), eachcol(φ_rb))
     end

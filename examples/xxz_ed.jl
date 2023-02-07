@@ -115,11 +115,10 @@ H = xxz_chain(L);
 # to find the lowest eigenvectors of ``H``, for which in this case we use the
 # [`LOBPCG`](@ref) solver. Since the XXZ model as defined above harbors degenerate ground
 # states at some parameter points, we need to choose the right solver settings to account
-# for that. To obtain only the ground state subspace, we set `n_target=1` and different
-# eigenvalues are then distinguished up some tolerance `tol_degeneracy`. The general solver
-# accuracy is set via the `tol` keyword argument:
+# for that. To obtain the ground state subspace, with different eigenvalues are being
+# distinguished up some tolerance `tol_degeneracy`, we set:
 
-lobpcg = LOBPCG(; n_target=1, tol_degeneracy=1e-4, tol=1e-9);
+lobpcg = LOBPCG(; tol_degeneracy=1e-4);
 
 # Next, we need to restrict our surrogate to a certain domain in the ``(\Delta, h/J)``
 # parameter space and define a discrete grid of points on that domain. This is achieved,
@@ -143,11 +142,11 @@ qrcomp = QRCompress(; tol=1e-9);
 # [`Greedy`](@ref) object. This includes choosing an error estimate, as well as an error
 # tolerance below which we stop the basis assembly:
 
-greedy = Greedy(; estimator=Residual(), tol=1e-3, init_from_rb=true);
+greedy = Greedy(; estimator=Residual(), tol=1e-3);
 
 # With that, we gathered all elements to be able generate the reduced basis:
 
-result = assemble(H, grid_train, greedy, lobpcg, qrcomp);
+rbres = assemble(H, grid_train, greedy, lobpcg, qrcomp);
 
 # To finish up the offline phase, we want to define an observable, again as an
 # [`AffineDecomposition`](@ref) and then compress it, to be able to measure it efficiently
@@ -156,8 +155,8 @@ result = assemble(H, grid_train, greedy, lobpcg, qrcomp);
 # in the parameter space. Conveniently, the magnetization already is contained in the third
 # term of ``H``:
 
-M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-m, _ = compress(M, result.basis);
+M    = AffineDecomposition([H.terms[3]], μ -> [2 / L])
+m, _ = compress(M, rbres.basis);
 
 # Note that the compression again produces an [`AffineDecomposition`](@ref) which now contains
 # only the low-dimensional matrices that operate in reduced basis space. In addition to the
@@ -192,20 +191,20 @@ fulldiag = FullDiagonalization(lobpcg);
 
 using Statistics
 magnetization = map(grid_online) do μ
-    _, φ_rb = solve(result.h_cache.h, result.basis.metric, μ, fulldiag)
+    _, φ_rb = solve(rbres.h_cache.h, rbres.basis.metric, μ, fulldiag)
     mean(u -> abs(dot(u, m_reduced, u)), eachcol(φ_rb))
 end;
 
 # Finally, we can take a look at the results. Note that, to plot a magnetization heatmap,
-# we need to transpose the `magnetization` matrix, in order to use the rows as the x-axis.
-# In addition to the magnetization, let us also plot the parameter points at which we
-# performed truth solves in the offline stage:
+# we need to pass the transposed matrix `magnetization'`, in order to use the rows as the
+# x-axis. In addition to the magnetization, let us also plot the parameter points at which
+# we performed truth solves in the offline stage:
 
 using Plots
 hm = heatmap(grid_online.ranges[1], grid_online.ranges[2], magnetization';
              xlabel=raw"$\Delta$", ylabel=raw"$h/J$", title="magnetization",
              colorbar=true, clims=(0.0, 1.0), leg=false)
-params = unique(result.basis.parameters)
+params = unique(rbres.basis.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
          markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)
 

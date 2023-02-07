@@ -41,18 +41,24 @@ end
 L = 12
 sites = siteinds("S=1/2", L)
 H = xxz_chain(sites; cutoff=1e-9);
-dm = DMRG(; n_states=1, tol_degeneracy=0.0, sweeps=default_sweeps(; cutoff_max=1e-9),
-          observer=() -> DMRGObserver(; energy_tol=1e-9));
+dm = DMRG();
 Δ = range(-1.0, 2.5; length=40)
 hJ = range(0.0, 3.5; length=40)
 grid_train = RegularGrid(Δ, hJ);
 
 # Up to this points we chose reasonable parameters for the basis assembly. However, we now
-# intend to generate a bad surrogate with purposefully bad settings. Namely, we limit our
-# basis size to `n_truth_max=6` truth solves and use a compression cutoff  of
-# `cutoff=1e-10` which is lower than the energy and singular value cutoff above:
+# intend to generate a bad surrogate with purposefully bad settings.
+#
+# !!! warning "Bad settings"
+#     The offline settings that are chosen here and also later in the example are designed
+#     to produce wrong and unconverged results, i.e. the "side effects" observed in this
+#     example should not happen in real applications and would indicate inappropriate
+#     parameters.
+#
+# Namely, we limit our basis size to `n_truth_max=6` truth solves and use a compression
+# cutoff of `cutoff=1e-10` which is lower than the energy and singular value cutoff above:
 
-greedy = Greedy(; estimator=Residual(), n_truth_max=8, init_from_rb=true)
+greedy = Greedy(; estimator=Residual(), n_truth_max=8)
 edcomp = EigenDecomposition(; cutoff=0.0);
 
 # We therefore let unphysical modes eventually enter our basis. The first useful object
@@ -62,29 +68,29 @@ edcomp = EigenDecomposition(; cutoff=0.0);
 # as the callback function during assembly:
 
 collector = InfoCollector(:basis, :h_cache)
-result = assemble(H, grid_train, greedy, dm, edcomp;
-                  callback=collector ∘ print_callback);
+rbres = assemble(H, grid_train, greedy, dm, edcomp;
+                 callback=collector ∘ print_callback);
 
 # Using this presumably inaccurate surrogate, we compute the magnetization
 
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-m, _ = compress(M, result.basis)
+m, _ = compress(M, rbres.basis)
 m_reduced = m([]);
 
 # on a finer online grid using the matching online solver
 
-Δ_online = range(first(Δ), last(Δ); length=100)
-hJ_online = range(first(hJ), last(hJ); length=100)
+Δ_online    = range(first(Δ), last(Δ); length=100)
+hJ_online   = range(first(hJ), last(hJ); length=100)
 grid_online = RegularGrid(Δ_online, hJ_online)
-fulldiag = FullDiagonalization(dm);
+fulldiag    = FullDiagonalization(dm);
 
 # and additionally save all computed reduced basis vectors for later analysis:
 
 using Statistics
-rbvecs = Matrix{Matrix{ComplexF64}}(undef, size(grid_online))
-magnetization = Matrix{Float64}(undef, size(grid_online))
+rbvecs = similar(grid_online, Matrix{ComplexF64})
+magnetization = similar(grid_online, Float64)
 for (idx, μ) in pairs(grid_online)
-    _, φ_rb = solve(result.h_cache.h, result.basis.metric, μ, fulldiag)
+    _, φ_rb = solve(rbres.h_cache.h, rbres.basis.metric, μ, fulldiag)
     rbvecs[idx] = φ_rb
     magnetization[idx] = mean(u -> abs(dot(u, m_reduced, u)), eachcol(φ_rb))
 end
@@ -94,7 +100,7 @@ end
 
 using Plots
 xrange, yrange = grid_online.ranges[1], grid_online.ranges[2]
-params = unique(result.basis.parameters)
+params = unique(rbres.basis.parameters)
 xpoints, ypoints = [μ[1] for μ in params], [μ[2] for μ in params]
 hm_kwargs = (; xlabel=raw"$\Delta$", ylabel=raw"$D/J$", colorbar=true, leg=false)
 marker_kwargs = (; markershape=:xcross, mcolor=:springgreen, ms=3.0, msw=2.0);
@@ -122,9 +128,10 @@ scatter!(hm, xpoints, ypoints; marker_kwargs...)
 # a unit vector would produce the minimal participation ratio. The RB vectors from before
 # produce the following ``\mathrm{PR}``:
 
+d = size(rbvecs[1], 1)
 pr = map(rbvecs) do φ
-    1 / sum(x -> abs(x)^4, φ)
-end / size(rbvecs[1], 1)
+    1 / (d * sum(x -> abs2(x)^2, φ))
+end
 
 hm = heatmap(xrange, yrange, pr'; title="participation ratio", hm_kwargs...)
 scatter!(hm, xpoints, ypoints; marker_kwargs...)
@@ -135,7 +142,7 @@ scatter!(hm, xpoints, ypoints; marker_kwargs...)
 # points. Using the collected info contained in the `collector`, we can even animate these
 # cells with respect to the greedy iterations:
 
-anim = @animate for n in 1:dimension(result.basis)
+anim = @animate for n in 1:dimension(rbres.basis)
     data = collector.data
     vecs = map(grid_online) do μ
         solve(data[:h_cache][n].h, data[:basis][n].metric, μ, fulldiag)[2]
@@ -154,28 +161,28 @@ gif(anim; fps=0.7)
 # ## Continuing an assembly
 #
 # To continue assembling a basis, we can just call [`assemble`](@ref) and provide
-# the `result` tuple from the previous greedy assembly. Of course the remaining arguments
+# the `rbres` tuple from the previous greedy assembly. Of course the remaining arguments
 # can be adjusted in the continued assembly, so let us now increase the maximal number of
 # truth solves:
 
 greedy_cont = Greedy(; estimator=Residual(), n_truth_max=36)
-result_cont = assemble(result, H, grid_train, greedy_cont, dm, edcomp);
+rbres_cont = assemble(rbres, H, grid_train, greedy_cont, dm, edcomp);
 
 # Apparently the assembly was stopped since an already solved snapshot was about to be
 # solved again — which cannot happen in a correctly assembled greedy basis, indicating that
 # the online evaluations of observables will contain artifacts. So let us check that by
 # recomputing the magnetization using the continued basis:
 
-m_cont, m_cont_raw = compress(M, result_cont.basis)
+m_cont, m_cont_raw = compress(M, rbres_cont.basis)
 m_reduced_cont = m_cont([])
 
 magn_cont = map(grid_online) do μ
-    _, φ_rb = solve(result_cont.h_cache.h, result_cont.basis.metric, μ, fulldiag)
+    _, φ_rb = solve(rbres_cont.h_cache.h, rbres_cont.basis.metric, μ, fulldiag)
     mean(u -> abs(dot(u, m_reduced_cont, u)), eachcol(φ_rb))
 end
 hm = heatmap(xrange, yrange, magn_cont';
              clims=(0.0, 1.0), title="continued magnetization", hm_kwargs...)
-params = unique(result_cont.basis.parameters)
+params = unique(rbres_cont.basis.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params]; marker_kwargs...)
 
 # Indeed the magnetization heatmap seems to be broken (again compare with
@@ -189,12 +196,12 @@ scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params]; marker_kwargs..
 # [`RBasis`](@ref) to a desired number of truth solves. Let us remove the last few snapshots
 # to correct the error incurred by repeated MPS approximations:
 
-basis_trunc = truncate(result_cont.basis, 30);
+basis_trunc = truncate(rbres_cont.basis, 30);
 
-# Since we performed multiple compressions using the previous `result_cont.basis`, we also
+# Since we performed multiple compressions using the previous `rbres_cont.basis`, we also
 # need to truncate the [`HamiltonianCache`](@ref) according to the truncated basis:
 
-h_cache_trunc = truncate(result_cont.h_cache, basis_trunc);
+h_cache_trunc = truncate(rbres_cont.h_cache, basis_trunc);
 
 # A slightly more subtle thing occurs with the compressed [`AffineDecomposition`](@ref)s.
 # Here we need to provide the second return argument `m_cont_raw` of the compressed magnetization from

@@ -60,7 +60,7 @@ H = xxz_chain(L)
 hJ = range(0.0, 3.5; length=20)
 grid_train = RegularGrid(Δ, hJ)
 
-lobpcg = LOBPCG(; n_target=1, tol_degeneracy=1e-4, tol=1e-9);
+lobpcg = LOBPCG(; tol_degeneracy=1e-4);
 
 # Notice that we now use a coarser 20 × 20 grid since we perform truth solves on all
 # parameter points and want to keep the computational effort low. Moreover, we are
@@ -74,19 +74,19 @@ pod = POD(; n_vectors=24);
 # We then call [`assemble`](@ref) using our parameters, including `pod`, which selects the
 # POD assembly method:
 
-result = assemble(H, grid_train, pod, lobpcg);
+rbres = assemble(H, grid_train, pod, lobpcg);
 
 # Since we do not compute any Hamiltonian compressions during POD, we need to compute them
 # afterwards using the [`HamiltonianCache`](@ref) constructor (recall that `h` is needed
 # in the online stage):
 
-h_cache = HamiltonianCache(H, result.basis);
+h_cache = HamiltonianCache(H, rbres.basis);
 
 # Again, we arrive at the online phase which is performed analogously to
 # [The reduced basis workflow](@ref).
 
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
-m, _ = compress(M, result.basis)
+m, _ = compress(M, rbres.basis)
 m_reduced = m([])
 Δ_online = range(first(Δ), last(Δ); length=100)
 hJ_online = range(first(hJ), last(hJ); length=100)
@@ -95,7 +95,7 @@ fulldiag = FullDiagonalization(lobpcg)
 
 using Statistics
 magnetization = map(grid_online) do μ
-    _, φ_rb = solve(h_cache.h, result.basis.metric, μ, fulldiag)
+    _, φ_rb = solve(h_cache.h, rbres.basis.metric, μ, fulldiag)
     mean(u -> abs(dot(u, m_reduced, u)), eachcol(φ_rb))
 end;
 

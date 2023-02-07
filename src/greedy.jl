@@ -90,11 +90,9 @@ function assemble(info::NamedTuple, H::AffineDecomposition, grid, greedy::Greedy
         # Compute residual on training grid and find maximum for greedy condition
         err_grid = similar(grid, Float64)
         λ_grid   = similar(grid, Vector{Float64})
-        φ_grid   = similar(grid, Matrix{ComplexF64})
         for (idx, μ) in pairs(grid)
             sol = solve(info.h_cache.h, info.basis.metric, μ, solver_online)
             λ_grid[idx] = sol.values
-            φ_grid[idx] = sol.vectors
             err_grid[idx] = estimate_error(greedy.estimator, μ, info.h_cache,
                                            info.basis, sol)
         end
@@ -136,7 +134,7 @@ function assemble(info::NamedTuple, H::AffineDecomposition, grid, greedy::Greedy
         h_cache = HamiltonianCache(info.h_cache, ext.basis)
 
         # Update iteration state info
-        info_new = (; iteration=n, err_grid, λ_grid, φ_grid, err_max, μ=μ_next,
+        info_new = (; iteration=n, err_grid, λ_grid, err_max, μ=μ_next,
                     basis=ext.basis, cache=info.cache, h_cache, extend_info=ext, 
                     state=:iterate)
         info = callback(info_new)
