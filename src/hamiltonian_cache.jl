@@ -31,9 +31,9 @@ function HamiltonianCache(H::AffineDecomposition, basis::RBasis)
     ΨHHΨ = reshape([overlap_matrix(v1, v2) for v1 in HΨ for v2 in HΨ],
                    (n_terms(H), n_terms(H)))
     h = AffineDecomposition([basis.vectors' * term * basis.vectors for term in ΨHΨ],
-                            H.coefficient_map)
+                            H.coefficients)
     h² = AffineDecomposition([basis.vectors' * term * basis.vectors for term in ΨHHΨ],
-                             μ -> (H.coefficient_map(μ) * H.coefficient_map(μ)'))
+                             μ -> (H.coefficients(μ) * H.coefficients(μ)'))
     HamiltonianCache(H, HΨ, ΨHΨ, ΨHHΨ, h, h²)
 end
 
@@ -83,8 +83,8 @@ function HamiltonianCache(hc::HamiltonianCache, basis::RBasis{V,T}) where {V,T}
 
     # Transform using basis.vectors and creat AffineDecompositions
     h = AffineDecomposition([basis.vectors' * term * basis.vectors for term in ΨHΨ],
-                            hc.H.coefficient_map)
+                            hc.H.coefficients)
     h² = AffineDecomposition([basis.vectors' * term * basis.vectors for term in ΨHHΨ],
-                             μ -> (hc.H.coefficient_map(μ) * hc.H.coefficient_map(μ)'))
+                             μ -> (hc.H.coefficients(μ) * hc.H.coefficients(μ)'))
     HamiltonianCache(hc.H, HΨ, ΨHΨ, ΨHHΨ, h, h²)
 end

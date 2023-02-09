@@ -84,7 +84,7 @@ terms = map(idx -> to_global(σz, L, first(idx.I)) * to_global(σz, L, last(idx.
 # Correspondingly, the coefficient function now has to map one ``k`` value to a matrix of
 # coefficients of the same size as the `terms` matrix:
 
-coefficient_map = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
+coefficients = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
                            CartesianIndices((1:L, 1:L)));
 
 # One feature of the structure factor that also shows up in many other affine decompositions
@@ -94,7 +94,7 @@ coefficient_map = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
 # decomposition. So let's create the [`AffineDecomposition`](@ref) and compress, exploiting
 # this symmetry using the `symmetric_terms` keyword argument:
 
-SFspin    = AffineDecomposition(terms, coefficient_map)
+SFspin    = AffineDecomposition(terms, coefficients)
 sfspin, _ = compress(SFspin, rbres.basis; symmetric_terms=true);
 
 # In the online evaluation of the structure factor, we then need to define some wavevector

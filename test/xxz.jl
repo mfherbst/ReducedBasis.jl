@@ -31,7 +31,7 @@ using ReducedBasis
         @testset "Correct magnetization values" begin
             fd = FullDiagonalization(solver_truth)
             m, _ = compress(M, info.basis)
-            m_reduced = m([1])
+            m_reduced = m()
             magnetization = map(grid_on) do μ
                 _, φ_rb = solve(info.h_cache.h, info.basis.metric, μ, fd)
                 sum(eachcol(φ_rb)) do φ

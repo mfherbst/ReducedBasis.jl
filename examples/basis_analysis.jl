@@ -31,11 +31,11 @@ function xxz_chain(sites::IndexSet; kwargs...)
         magn_term += "Sz", i
     end
     magn_term += "Sz", length(sites)  # Add last magnetization term
-    coefficient_map = μ -> [1.0, μ[1], -μ[2]]
+    coefficients = μ -> [1.0, μ[1], -μ[2]]
     AffineDecomposition([ApproxMPO(MPO(xy_term, sites), xy_term; kwargs...),
                          ApproxMPO(MPO(zz_term, sites), zz_term; kwargs...),
                          ApproxMPO(MPO(magn_term, sites), magn_term; kwargs...)],
-                        coefficient_map)
+                        coefficients)
 end
 
 L = 12
@@ -75,7 +75,7 @@ rbres = assemble(H, grid_train, greedy, dm, edcomp;
 
 M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
 m, _ = compress(M, rbres.basis)
-m_reduced = m([]);
+m_reduced = m();
 
 # on a finer online grid using the matching online solver
 
