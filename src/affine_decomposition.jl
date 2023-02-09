@@ -90,7 +90,8 @@ function compress(ad::AffineDecomposition{<:Matrix,<:Function},
     end  # Use "symmetry" to set transposed elements
     matrixel = promote_type.(matrixel)  # Promote to common floating-point type
     rbterms = map(m -> basis.vectors' * m * basis.vectors, matrixel)
-
+    (; rb=AffineDecomposition(rbterms, ad.coefficients),
+     raw=AffineDecomposition(matrixel, ad.coefficients))
 end
 
 """

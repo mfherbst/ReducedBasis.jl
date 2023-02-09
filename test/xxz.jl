@@ -5,7 +5,7 @@ using ReducedBasis
     # Offline/online parameters
     L        = 6
     H        = xxz_chain(L)
-    M        = AffineDecomposition([H.terms[3]], μ -> [2 / L])
+    M        = AffineDecomposition([H.terms[3]], [2 / L])
     Δ_off    = range(-1.0, 2.5; length=40)
     hJ_off   = range(0.0, 3.5; length=40)
     grid_off = RegularGrid(Δ_off, hJ_off);

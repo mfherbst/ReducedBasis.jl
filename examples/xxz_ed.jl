@@ -155,7 +155,7 @@ rbres = assemble(H, grid_train, greedy, lobpcg, qrcomp);
 # in the parameter space. Conveniently, the magnetization already is contained in the third
 # term of ``H``:
 
-M    = AffineDecomposition([H.terms[3]], μ -> [2 / L])
+M    = AffineDecomposition([H.terms[3]], [2 / L])
 m, _ = compress(M, rbres.basis);
 
 # Note that the compression again produces an [`AffineDecomposition`](@ref) which now contains

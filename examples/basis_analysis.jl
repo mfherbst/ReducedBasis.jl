@@ -73,7 +73,7 @@ rbres = assemble(H, grid_train, greedy, dm, edcomp;
 
 # Using this presumably inaccurate surrogate, we compute the magnetization
 
-M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
+M = AffineDecomposition([H.terms[3]], [2 / L])
 m, _ = compress(M, rbres.basis)
 m_reduced = m();
 
