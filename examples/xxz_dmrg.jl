@@ -70,7 +70,8 @@ dm = DMRG(; sweeps=default_sweeps(; cutoff_max=1e-9),
 # iteration up the specified `energy_tol`. The sweeps argument takes any `ITensors.Sweeps`
 # object that controls the approximation settings with respect to the DMRG sweeps.
 # While the implemented DMRG solver is capable of also solving degenerate ground states,
-# we here opt for the default settings, which perform a non-degenerate DMRG solve (We do
+# we here opt for non-degenerate DMRG settings (see the `n_states` and `tol_degeneracy`
+# keyword arguments in [`DMRG`](@ref)) which is the default behavior. (We do
 # this due to a ``L+1``-fold degeneracy on the parameter domain, where the degenerate DMRG
 # solver can produce instable results for larger ``L``.)
 # 

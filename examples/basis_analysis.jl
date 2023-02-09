@@ -40,8 +40,8 @@ end
 
 L = 12
 sites = siteinds("S=1/2", L)
-H = xxz_chain(sites; cutoff=1e-9);
-dm = DMRG();
+H = xxz_chain(sites; cutoff=1e-9)
+dm = DMRG()
 Δ = range(-1.0, 2.5; length=40)
 hJ = range(0.0, 3.5; length=40)
 grid_train = RegularGrid(Δ, hJ);
@@ -50,10 +50,10 @@ grid_train = RegularGrid(Δ, hJ);
 # intend to generate a bad surrogate with purposefully bad settings.
 #
 # !!! warning "Bad settings"
-#     The offline settings that are chosen here and also later in the example are designed
-#     to produce wrong and unconverged results, i.e. the "side effects" observed in this
-#     example should not happen in real applications and would indicate inappropriate
-#     parameters.
+#     The offline settings that are chosen here and also later in the example are
+#     intentionally chosen to produce unconverged (and thus wrong) results, i.e. the
+#     "side effects" observed in this example should not happen in real applications and
+#     would indicate inappropriate parameters.
 #
 # Namely, we limit our basis size to `n_truth_max=6` truth solves and use a compression
 # cutoff of `cutoff=1e-10` which is lower than the energy and singular value cutoff above:
@@ -128,7 +128,7 @@ scatter!(hm, xpoints, ypoints; marker_kwargs...)
 # a unit vector would produce the minimal participation ratio. The RB vectors from before
 # produce the following ``\mathrm{PR}``:
 
-d = size(rbvecs[1], 1)
+d = dimension(rbres.basis)
 pr = map(rbvecs) do φ
     1 / (d * sum(x -> abs2(x)^2, φ))
 end
