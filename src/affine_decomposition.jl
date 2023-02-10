@@ -72,8 +72,7 @@ with two indices (double-sum observables), including an option to
 exploit the possible symmetry of terms ``O_{r,r'} = O_{r',r}``,
 such that only the necessary compressions are computed.
 """
-function compress(ad::AffineDecomposition{<:Matrix,<:Function},
-                  basis::RBasis; symmetric_terms=false)
+function compress(ad::AffineDecomposition{<:Matrix}, basis::RBasis; symmetric_terms=false)
     # TODO: replace symmetric_terms by some generalized Symmetric type in the long run
     is_nonredundant(a, b) = (size(ad.terms, 1) > size(ad.terms, 2)) ? ≥(a, b) : ≤(a, b)
     matrixel = map(CartesianIndices(ad.terms)) do idx

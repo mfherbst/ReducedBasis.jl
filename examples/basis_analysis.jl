@@ -174,7 +174,7 @@ rbres_cont = assemble(rbres, H, grid_train, greedy_cont, dm, edcomp);
 # recomputing the magnetization using the continued basis:
 
 m_cont, m_cont_raw = compress(M, rbres_cont.basis)
-m_reduced_cont = m_cont([])
+m_reduced_cont = m_cont()
 
 magn_cont = map(grid_online) do μ
     _, φ_rb = solve(rbres_cont.h_cache.h, rbres_cont.basis.metric, μ, fulldiag)
@@ -208,7 +208,7 @@ h_cache_trunc = truncate(rbres_cont.h_cache, basis_trunc);
 # above:
 
 m_trunc = truncate(m_cont_raw, basis_trunc)
-m_reduced_trunc = m_trunc([]);
+m_reduced_trunc = m_trunc();
 
 # Finally, let us recompute the magnetization but this time with the truncated
 # quantities and check the heatmap plot:
