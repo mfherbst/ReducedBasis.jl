@@ -85,7 +85,7 @@ terms = map(idx -> to_global(σz, L, first(idx.I)) * to_global(σz, L, last(idx.
 # coefficients of the same size as the `terms` matrix:
 
 coefficients = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
-                           CartesianIndices((1:L, 1:L)));
+                        CartesianIndices((1:L, 1:L)));
 
 # One feature of the structure factor that also shows up in many other affine decompositions
 # with double-sums is that the term indices commute, i.e. ``O_{r,r'} = O_{r',r}``. In that

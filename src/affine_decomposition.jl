@@ -16,9 +16,9 @@ Note that ``r = (r_1, \\dots, r_d)`` generally is a multi-index and as such `ter
 can be a ``d``-dimensional array. Correspondingly, `coefficients` maps parameter points
 ``\\bm{\\mu}`` to an `size(terms)` array.
 """
-struct AffineDecomposition{T<:AbstractArray,F}
+struct AffineDecomposition{T<:AbstractArray,C}
     terms::T
-    coefficients::F
+    coefficients::C
     function AffineDecomposition(terms::AbstractArray, coefficients)
         if !all(s -> s == size(terms[1]), size.(terms))
             error("affine terms have different dimensions")
