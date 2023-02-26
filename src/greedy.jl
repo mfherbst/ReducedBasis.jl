@@ -31,7 +31,7 @@ Greedy reduced basis assembling strategy.
   See also [`estimate_error`](@ref)
 - `tol::Float64=1e-3`: tolerance for error estimate, below which the assembly is terminated.
 - `n_truth_max::Int=64`: maximal number of truth solves to be taken up in the basis.
-- `init_from_rb::Bool=true`: if `true`, uses initial guesses from RB eigenvectors.
+- `Ψ_init::Function=rb_guess`: returns initial guess for truth solver.
   See also [`interpolate`](@ref).
 - `verbose::Bool=true`: print information during assembly if `true`.
 - `exit_checks::Bool=true`: if `false`, no exit checks will be performed and the assembly
@@ -39,24 +39,33 @@ Greedy reduced basis assembling strategy.
 """
 @kwdef struct Greedy
     estimator::ErrorEstimate
-    tol::Float64       = 1e-3
-    n_truth_max::Int   = 64
-    init_from_rb::Bool = true  # TODO: More general mechanism
-    verbose::Bool      = true
-    exit_checks::Bool  = true
+    tol::Float64      = 1e-3
+    n_truth_max::Int  = 64
+    Ψ_init::Function  = rb_guess
+    verbose::Bool     = true
+    exit_checks::Bool = true
 end
 
 """
-    interpolate(basis::RBasis, h::AffineDecomposition, μ, _, solver_online)
+    interpolate(basis::RBasis, h::AffineDecomposition, μ, solver_online)
 
 Compute Hilbert-space-dimensional ground state vector at parameter point `μ`
 from the reduced basis using
 ``\\bm{\\Phi}(\\bm{\\mu}) = B \\bm{\\varphi}(\\bm{\\mu})``.
 """
-function interpolate(basis::RBasis, h::AffineDecomposition, μ, _, solver_online)
+function interpolate(basis::RBasis, h::AffineDecomposition, μ, solver_online)
     # TODO: benchmark for realistic problems
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
     hcat(basis.snapshots...) * basis.vectors * φ_rb
+end
+
+# TODO: add docs
+function rb_guess(info, args)
+    if info.state == :start
+        nothing  # TODO: add random_guess dispatching on type of args.solver_truth or equivalent
+    else
+        interpolate(info.basis, info.h_cache.h, info.μ, args.solver_online)
+    end
 end
 
 """
@@ -106,12 +115,10 @@ function assemble(info::NamedTuple, H::AffineDecomposition, grid, greedy::Greedy
         end
 
         # Construct initial guess at μ_next and run truth solve
-        if greedy.init_from_rb
-            Ψ₀ = interpolate(info.basis, info.h_cache.h, μ_next, solver_truth, solver_online)
-        else
-            Ψ₀ = nothing
-        end
-        truth = solve(H, μ_next, Ψ₀, solver_truth)
+        Ψ_init = greedy.Ψ_init((; info..., err_grid, λ_grid, err_max, μ=μ_next),
+                               (; H, grid, greedy, solver_truth, compressalg,
+                                solver_online))
+        truth = solve(H, μ_next, Ψ_init, solver_truth)
 
         # Append truth vector according to solver method
         ext = extend(info.basis, truth.vectors, μ_next, compressalg)
@@ -151,14 +158,13 @@ end
 
 function assemble(H::AffineDecomposition, grid, greedy::Greedy, solver_truth, compressalg;
                   μ_start=grid[1], callback=print_callback, kwargs...)
-    info = callback((; cache=(;), state=:start))
-    if info.state == :start
-        truth   = solve(H, μ_start, nothing, solver_truth)
-        BᵀB     = overlap_matrix(truth.vectors, truth.vectors)
-        basis   = RBasis(truth.vectors, fill(μ_start, length(truth.vectors)), I, BᵀB, BᵀB)
-        h_cache = HamiltonianCache(H, basis)
-        info    = (; iteration=1, err_max=NaN, μ=μ_start, basis, h_cache,
-                   cache=info.cache, state=:iterate)
-    end
+    info    = callback((; cache=(;), state=:start))
+    Ψ_init  = greedy.Ψ_init(info, (; H, grid, greedy, solver_truth, compressalg, kwargs...))
+    truth   = solve(H, μ_start, Ψ_init, solver_truth)
+    BᵀB     = overlap_matrix(truth.vectors, truth.vectors)
+    basis   = RBasis(truth.vectors, fill(μ_start, length(truth.vectors)), I, BᵀB, BᵀB)
+    h_cache = HamiltonianCache(H, basis)
+    info    = (; iteration=1, err_max=NaN, μ=μ_start, basis, h_cache,
+                cache=info.cache, state=:iterate)
     assemble(info, H, grid, greedy, solver_truth, compressalg; callback, kwargs...)
 end
