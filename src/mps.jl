@@ -87,7 +87,7 @@ Base.size(o::ApproxMPO) = size(o.mpo)
 Compute sum with `ApproxMPO`s using the exact `ITensors` operator sum.
 """
 function (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
-    θ = ad.coefficient_map(μ)
+    θ = ad.coefficients(μ)
     opsum = sum(c * term.opsum for (c, term) in zip(θ, ad.terms))
     MPO(opsum, last.(siteinds(ad.terms[1].mpo)))
 end

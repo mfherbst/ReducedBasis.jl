@@ -12,12 +12,12 @@ using ReducedBasis: reconstruct
             magn_term +=      "Sz", i
         end
         magn_term += "Sz", length(sts)  # Add last magnetization term
-        coefficient_map = μ -> [1.0, μ[1], -μ[2]]
+        coefficients = μ -> [1.0, μ[1], -μ[2]]
         AffineDecomposition(
             [ApproxMPO(MPO(xy_term, sts), xy_term; kwargs...),
             ApproxMPO(MPO(zz_term, sts), zz_term; kwargs...),
             ApproxMPO(MPO(magn_term, sts), magn_term; kwargs...)],
-            coefficient_map)
+            coefficients)
     end
     function xxz_chain(N)
         σx = sparse([0.0 1.0; 1.0 0.0])
@@ -27,8 +27,8 @@ using ReducedBasis: reconstruct
                             to_global(N, σy, i) * to_global(N, σy, i + 1) for i in 1:(N-1)])
         H2 = 0.25 * sum([to_global(N, σz, i) * to_global(N, σz, i + 1) for i in 1:(N-1)])
         H3 = 0.5  * sum([to_global(N, σz, i) for i in 1:N])
-        coefficient_map = μ -> [1.0, μ[1], -μ[2]]
-        AffineDecomposition([H1, H2, H3], coefficient_map)
+        coefficients = μ -> [1.0, μ[1], -μ[2]]
+        AffineDecomposition([H1, H2, H3], coefficients)
     end
 
     # Offline/online parameters
@@ -36,7 +36,7 @@ using ReducedBasis: reconstruct
     sites    = siteinds("S=1/2", L)
     H        = xxz_chain(sites; cutoff=1e-14)  # TODO: if too large -> low residual errors at solved μ do not hold!
     H_matrix = xxz_chain(L)
-    M        = AffineDecomposition([H.terms[3]], μ -> [2 / L])
+    M        = AffineDecomposition([H.terms[3]], [2 / L])
     Δ_off    = range(-1.0, 2.5; length=40)
     hJ_off   = range(0.0, 3.5; length=40)
     grid_off = RegularGrid(Δ_off, hJ_off);
@@ -65,7 +65,7 @@ using ReducedBasis: reconstruct
         @testset "Correct magnetization values" begin
             fd = FullDiagonalization(solver_truth)
             m, _ = compress(M, info.basis)
-            m_reduced = m([1])
+            m_reduced = m()
             magnetization = map(grid_on) do μ
                 _, φ_rb = solve(info.h_cache.h, info.basis.metric, μ, fd)
                 sum(eachcol(φ_rb)) do φ

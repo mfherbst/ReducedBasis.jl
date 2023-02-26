@@ -5,7 +5,7 @@ using ReducedBasis
     # Offline/online parameters
     L        = 6
     H        = xxz_chain(L)
-    M        = AffineDecomposition([H.terms[3]], μ -> [2 / L])
+    M        = AffineDecomposition([H.terms[3]], [2 / L])
     Δ_off    = range(-1.0, 2.5; length=40)
     hJ_off   = range(0.0, 3.5; length=40)
     grid_off = RegularGrid(Δ_off, hJ_off);
@@ -31,7 +31,7 @@ using ReducedBasis
         @testset "Correct magnetization values" begin
             fd = FullDiagonalization(solver_truth)
             m, _ = compress(M, info.basis)
-            m_reduced = m([1])
+            m_reduced = m()
             magnetization = map(grid_on) do μ
                 _, φ_rb = solve(info.h_cache.h, info.basis.metric, μ, fd)
                 sum(eachcol(φ_rb)) do φ

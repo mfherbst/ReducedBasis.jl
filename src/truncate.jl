@@ -52,11 +52,11 @@ function Base.truncate(hc::HamiltonianCache, basis_trunc::RBasis)
     # Adjust reduced Hamiltonian AffineDecompositions
     h_trunc = AffineDecomposition(
         [basis_trunc.vectors' * term * basis_trunc.vectors for term in ΨHΨ_trunc],
-        hc.H.coefficient_map
+        hc.H.coefficients
     )
     h²_trunc = AffineDecomposition(
         [basis_trunc.vectors' * term * basis_trunc.vectors for term in ΨHHΨ_trunc],
-        μ -> (hc.H.coefficient_map(μ) * hc.H.coefficient_map(μ)')
+        μ -> (hc.H.coefficients(μ) * hc.H.coefficients(μ)')
     )
 
     HamiltonianCache(hc.H, HΨ_trunc, ΨHΨ_trunc, ΨHHΨ_trunc, h_trunc, h²_trunc)
@@ -81,12 +81,12 @@ function Base.truncate(ad_raw::AffineDecomposition, basis_trunc::RBasis)
     idx_trunc = dimension(basis_trunc)
     V = basis_trunc.vectors
     terms_trunc = [V' * term[1:idx_trunc, 1:idx_trunc] * V for term in ad_raw.terms]
-    AffineDecomposition(terms_trunc, ad_raw.coefficient_map)
+    AffineDecomposition(terms_trunc, ad_raw.coefficients)
 end
 
 function Base.truncate(ad::AffineDecomposition,
                        basis_trunc::RBasis{V,T,P,<:UniformScaling}) where {V,T<:Number,P}
     idx_trunc = dimension(basis_trunc)
     AffineDecomposition([term[1:idx_trunc, 1:idx_trunc] for term in ad.terms],
-                        ad.coefficient_map)
+                        ad.coefficients)
 end

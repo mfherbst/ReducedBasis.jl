@@ -31,11 +31,11 @@ function xxz_chain(sites::IndexSet; kwargs...)
         magn_term += "Sz", i
     end
     magn_term += "Sz", length(sites)  # Add last magnetization term
-    coefficient_map = μ -> [1.0, μ[1], -μ[2]]
+    coefficients = μ -> [1.0, μ[1], -μ[2]]
     AffineDecomposition([ApproxMPO(MPO(xy_term, sites), xy_term; kwargs...),
                          ApproxMPO(MPO(zz_term, sites), zz_term; kwargs...),
                          ApproxMPO(MPO(magn_term, sites), magn_term; kwargs...)],
-                        coefficient_map)
+                        coefficients)
 end
 
 L = 12
@@ -73,9 +73,9 @@ rbres = assemble(H, grid_train, greedy, dm, edcomp;
 
 # Using this presumably inaccurate surrogate, we compute the magnetization
 
-M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
+M = AffineDecomposition([H.terms[3]], [2 / L])
 m, _ = compress(M, rbres.basis)
-m_reduced = m([]);
+m_reduced = m();
 
 # on a finer online grid using the matching online solver
 
@@ -174,7 +174,7 @@ rbres_cont = assemble(rbres, H, grid_train, greedy_cont, dm, edcomp);
 # recomputing the magnetization using the continued basis:
 
 m_cont, m_cont_raw = compress(M, rbres_cont.basis)
-m_reduced_cont = m_cont([])
+m_reduced_cont = m_cont()
 
 magn_cont = map(grid_online) do μ
     _, φ_rb = solve(rbres_cont.h_cache.h, rbres_cont.basis.metric, μ, fulldiag)
@@ -208,7 +208,7 @@ h_cache_trunc = truncate(rbres_cont.h_cache, basis_trunc);
 # above:
 
 m_trunc = truncate(m_cont_raw, basis_trunc)
-m_reduced_trunc = m_trunc([]);
+m_reduced_trunc = m_trunc();
 
 # Finally, let us recompute the magnetization but this time with the truncated
 # quantities and check the heatmap plot:

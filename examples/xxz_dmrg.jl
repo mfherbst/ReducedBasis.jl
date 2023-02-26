@@ -101,7 +101,7 @@ rbres = assemble(H, grid_train, greedy, dm, edcomp);
 # we did for the Hamiltonian. Again, we want to compute the magnetization so that we can
 # reuse the third term of `H`:
 
-M    = AffineDecomposition([H.terms[3]], μ -> [2 / L])
+M    = AffineDecomposition([H.terms[3]], [2 / L])
 m, _ = compress(M, rbres.basis);
 
 # And at that point, we continue as before since we have arrived at the online phase where
@@ -115,7 +115,7 @@ fulldiag = FullDiagonalization(dm);
 # constructing `m` at an arbitary parameter point since its coefficient is
 # parameter-independent:
 
-m_reduced = m([])
+m_reduced = m()
 Δ_online = range(first(Δ), last(Δ); length=100)
 hJ_online = range(first(hJ), last(hJ); length=100)
 grid_online = RegularGrid(Δ_online, hJ_online)

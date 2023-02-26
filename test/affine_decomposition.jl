@@ -21,16 +21,16 @@ using ReducedBasis: AffineDecomposition, n_terms, compress
 
     @testset "Linear indices" begin
         terms = [rand(N, N) for _ in 1:Q]
-        coefficient_map = μ -> rand(Q) .* μ
-        ad = AffineDecomposition(terms, coefficient_map)
+        coefficients = μ -> rand(Q) .* μ
+        ad = AffineDecomposition(terms, coefficients)
         adcomp, adraw = compress(ad, basis)
         ad_test(terms, ad, adcomp, adraw)
     end
 
     @testset "Multi indices" begin
         terms = map(r -> rand(N, N), zeros(Q, Q))
-        coefficient_map = μ -> (μ * μ') * rand(Q, Q)
-        ad = AffineDecomposition(terms, coefficient_map)
+        coefficients = μ -> (μ * μ') * rand(Q, Q)
+        ad = AffineDecomposition(terms, coefficients)
         adcomp, adraw = compress(ad, basis)
         ad_test(terms, ad, adcomp, adraw)
     end
@@ -39,8 +39,8 @@ using ReducedBasis: AffineDecomposition, n_terms, compress
         d₁, d₂ = 3, 5
         @testset "d₁ < d₂" begin
             terms = map(r -> rand(N, N), zeros(d₁, d₂))
-            coefficient_map = μ -> rand(d₁, d₂)
-            ad = AffineDecomposition(terms, coefficient_map)
+            coefficients = μ -> rand(d₁, d₂)
+            ad = AffineDecomposition(terms, coefficients)
             adcomp, adraw = compress(ad, basis; symmetric_terms=true)
             ad_test(terms, ad, adcomp, adraw)
             for idx in findall(x -> x.I[1] > x.I[2], CartesianIndices(terms))
@@ -50,8 +50,8 @@ using ReducedBasis: AffineDecomposition, n_terms, compress
         end
         @testset "d₁ > d₂" begin
             terms = map(r -> rand(N, N), zeros(d₂, d₁))
-            coefficient_map = μ -> rand(d₂, d₁)
-            ad = AffineDecomposition(terms, coefficient_map)
+            coefficients = μ -> rand(d₂, d₁)
+            ad = AffineDecomposition(terms, coefficients)
             adcomp, adraw = compress(ad, basis; symmetric_terms=true)
             ad_test(terms, ad, adcomp, adraw)
             for idx in findall(x -> x.I[1] < x.I[2], CartesianIndices(terms))

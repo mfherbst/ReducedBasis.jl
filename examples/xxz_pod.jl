@@ -85,9 +85,9 @@ h_cache = HamiltonianCache(H, rbres.basis);
 # Again, we arrive at the online phase which is performed analogously to
 # [The reduced basis workflow](@ref).
 
-M = AffineDecomposition([H.terms[3]], μ -> [2 / L])
+M = AffineDecomposition([H.terms[3]], [2 / L])
 m, _ = compress(M, rbres.basis)
-m_reduced = m([])
+m_reduced = m()
 Δ_online = range(first(Δ), last(Δ); length=100)
 hJ_online = range(first(hJ), last(hJ); length=100)
 grid_online = RegularGrid(Δ_online, hJ_online)

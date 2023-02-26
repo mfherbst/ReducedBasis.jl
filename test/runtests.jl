@@ -25,9 +25,9 @@ function xxz_chain(N)
                         to_global(N, σy, i) * to_global(N, σy, i + 1) for i in 1:(N-1)])
     H2 = 0.25 * sum([to_global(N, σz, i) * to_global(N, σz, i + 1) for i in 1:(N-1)])
     H3 = 0.5  * sum([to_global(N, σz, i) for i in 1:N])
-    coefficient_map = μ -> [1.0, μ[1], -μ[2]]
+    coefficients = μ -> [1.0, μ[1], -μ[2]]
 
-    AffineDecomposition([H1, H2, H3], coefficient_map)
+    AffineDecomposition([H1, H2, H3], coefficients)
 end
 
 # Convenience function for fast generation of XXZ RBasis

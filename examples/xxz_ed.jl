@@ -155,17 +155,17 @@ rbres = assemble(H, grid_train, greedy, lobpcg, qrcomp);
 # in the parameter space. Conveniently, the magnetization already is contained in the third
 # term of ``H``:
 
-M    = AffineDecomposition([H.terms[3]], μ -> [2 / L])
+M    = AffineDecomposition([H.terms[3]], [2 / L])
 m, _ = compress(M, rbres.basis);
 
 # Note that the compression again produces an [`AffineDecomposition`](@ref) which now contains
 # only the low-dimensional matrices that operate in reduced basis space. In addition to the
 # compressed observable, [`compress`](@ref) also returns a second decomposition for analysis
 # purposes, which we will not cover in this example and hence did not assign. Since the
-# coefficient ``2L^{-1}`` is actually parameter-independent, we can just construct `m` at
-# some parameter point to obtain the reduced magnetization matrix for all parameters:
+# coefficient ``2L^{-1}`` is actually parameter-independent, we can just construct `m`
+# without passing any parameter point to obtain the constant reduced magnetization matrix:
 
-m_reduced = m([]);
+m_reduced = m();
 
 # ## Online phase
 #
