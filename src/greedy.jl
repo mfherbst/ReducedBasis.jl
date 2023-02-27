@@ -59,14 +59,27 @@ function interpolate(basis::RBasis, h::AffineDecomposition, μ, solver_online)
     hcat(basis.snapshots...) * basis.vectors * φ_rb
 end
 
-# TODO: add docs
+"""
+    rb_guess(info, args)
+
+Provide the reduced basis interpolated ground state as an initial guess for
+the truth solver.
+"""
 function rb_guess(info, args)
     if info.state == :start
-        nothing  # TODO: add random_guess dispatching on type of args.solver_truth or equivalent
+        nothing
     else
         interpolate(info.basis, info.h_cache.h, info.μ, args.solver_online)
     end
 end
+
+"""
+    random_guess(info, args)
+
+Provides a random initial guess according to the truth solver method.
+"""
+random_guess(info, args) = nothing
+# TODO: properly implement random_guess interface
 
 """
     assemble(H, grid, greedy, solver_truth, compressalg; <keyword arguments>)

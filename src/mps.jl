@@ -89,7 +89,7 @@ Compute sum with `ApproxMPO`s using the exact `ITensors` operator sum.
 function (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
     θ = ad.coefficients(μ)
     opsum = sum(c * term.opsum for (c, term) in zip(θ, ad.terms))
-    MPO(opsum, last.(siteinds(ad.terms[1].mpo)))
+    MPO(opsum, noprime.(first.(siteinds(ad.terms[1].mpo))))
 end
 
 """
@@ -188,9 +188,9 @@ end
 solve(H::AffineDecomposition, μ, Ψ₀::MPS, dm::DMRG) = solve(H, μ, [Ψ₀], dm)
 
 function solve(H::AffineDecomposition, μ, ::Nothing, dm::DMRG)
-    # last.(siteinds(...)) for two physical indices per tensor, last for non-primed index
-    Ψ₀ = fill(randomMPS(last.(siteinds(H.terms[1].mpo));
-              linkdims=dm.sweeps.maxdim[1]), dm.n_states)
+    # noprime(first.(siteinds(...)()) to obtain original sites
+    sites = noprime.(first.(siteinds(H.terms[1].mpo)))
+    Ψ₀ = fill(randomMPS(sites; linkdims=dm.sweeps.maxdim[1]), dm.n_states)
     solve(H, μ, Ψ₀, dm)
 end
 

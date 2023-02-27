@@ -7,8 +7,7 @@ using ReducedBasis
     H        = xxz_chain(L)
     M        = AffineDecomposition([H.terms[3]], μ -> [2 / L])
     grid_off = RegularGrid(range(-1.0, 2.5; length=40), range(0.0, 3.5; length=40))
-    greedy   = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=32,
-                    init_from_rb=true, verbose=false)
+    greedy   = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=32, verbose=false)
     lobpcg   = LOBPCG(; n_target=1, tol_degeneracy=1e-4, tol=1e-9)
     n_trunc = 4
     

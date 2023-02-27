@@ -119,7 +119,7 @@ using ReducedBasis: reconstruct
     
     @testset "Initial guess from RB eigenvector" begin
         greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, 
-                        init_from_rb=true, verbose=false)
+                        Ψ_init=rb_guess, verbose=false)
         @testset "Greedy assembly: degenerate" begin
             collector = InfoCollector(:λ_grid)
             info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=collector)
@@ -139,7 +139,7 @@ using ReducedBasis: reconstruct
 
     @testset "Random initial guess" begin
         greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, 
-                        init_from_rb=false, verbose=false)
+                        Ψ_init=random_guess, verbose=false)
         @testset "Greedy assembly: degenerate" begin
             collector = InfoCollector(:λ_grid)
             info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=collector)

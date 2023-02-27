@@ -36,7 +36,7 @@ export print_callback
 include("callback.jl")
 
 export Greedy, ErrorEstimate, Residual
-export estimate_error, assemble, interpolate, rb_guess
+export estimate_error, assemble, interpolate, rb_guess, random_guess
 include("greedy.jl")
 
 export POD
