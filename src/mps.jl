@@ -172,8 +172,9 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
         end
     end
 
-    variances  = [abs(inner(H_full, Ψ, H_full, Ψ) - inner(Ψ', H_full, Ψ)^2) for Ψ in vectors]
-    iterations = length(observer.energies)
+    variances   = [abs(inner(H_full, Ψ, H_full, Ψ) - inner(Ψ', H_full, Ψ)^2) for Ψ in vectors]
+    iterations  = length(observer.energies)
+    maxtruncerr = maximum(observer.truncerrs)
     if dm.verbose
         length(vectors) > 1 &&
             println("Degenerate point μ = $μ found with m = $(length(vectors))")
@@ -182,7 +183,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
         end
     end
 
-    (; values, vectors, variances, iterations)
+    (; values, vectors, variances, iterations, maxtruncerr)
 end
 
 solve(H::AffineDecomposition, μ, Ψ₀::MPS, dm::DMRG) = solve(H, μ, [Ψ₀], dm)

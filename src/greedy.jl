@@ -60,25 +60,26 @@ function interpolate(basis::RBasis, h::AffineDecomposition, μ, solver_online)
 end
 
 """
-    rb_guess(info, args)
+    rb_guess(info, offline_args; kwargs...)
 
 Provide the reduced basis interpolated ground state as an initial guess for
 the truth solver.
 """
-function rb_guess(info, args)
+function rb_guess(info, offline_args; kwargs...)
     if info.state == :start
         nothing
     else
-        interpolate(info.basis, info.h_cache.h, info.μ, args.solver_online)
+        interpolate(info.basis, info.h_cache.h, info.μ, offline_args.solver_online;
+                    kwargs...)
     end
 end
 
 """
-    random_guess(info, args)
+    random_guess(info, offline_args)
 
 Provides a random initial guess according to the truth solver method.
 """
-random_guess(info, args) = nothing
+random_guess(info, offline_args) = nothing
 # TODO: properly implement random_guess interface
 
 """
@@ -155,8 +156,9 @@ function assemble(info::NamedTuple, H::AffineDecomposition, grid, greedy::Greedy
 
         # Update iteration state info
         info_new = (; iteration=n, err_grid, λ_grid, err_max, μ=μ_next,
-                    basis=ext.basis, cache=info.cache, h_cache, extend_info=ext, 
-                    state=:iterate)
+                    solver_info=truth, basis=ext.basis, extend_info=ext,
+                    condnum=metric_condition, h=h_cache.h, h_cache,
+                    cache=info.cache, state=:iterate)
         info = callback(info_new)
 
         # Exit iteration if error estimate drops below tolerance
@@ -171,13 +173,13 @@ end
 
 function assemble(H::AffineDecomposition, grid, greedy::Greedy, solver_truth, compressalg;
                   μ_start=grid[1], callback=print_callback, kwargs...)
-    info    = callback((; cache=(;), state=:start))
+    info    = callback((; iteration=0, cache=(;), state=:start))
     Ψ_init  = greedy.Ψ_init(info, (; H, grid, greedy, solver_truth, compressalg, kwargs...))
     truth   = solve(H, μ_start, Ψ_init, solver_truth)
     BᵀB     = overlap_matrix(truth.vectors, truth.vectors)
     basis   = RBasis(truth.vectors, fill(μ_start, length(truth.vectors)), I, BᵀB, BᵀB)
     h_cache = HamiltonianCache(H, basis)
-    info    = (; iteration=1, err_max=NaN, μ=μ_start, basis, h_cache,
-                cache=info.cache, state=:iterate)
+    info    = (; iteration=1, err_max=NaN, μ=μ_start, basis, solver_info=truth,
+                h=h_cache.h, h_cache, condnum=cond(BᵀB), cache=info.cache, state=:iterate)
     assemble(info, H, grid, greedy, solver_truth, compressalg; callback, kwargs...)
 end

@@ -90,7 +90,7 @@ using Statistics
 rbvecs = similar(grid_online, Matrix{ComplexF64})
 magnetization = similar(grid_online, Float64)
 for (idx, μ) in pairs(grid_online)
-    _, φ_rb = solve(rbres.h_cache.h, rbres.basis.metric, μ, fulldiag)
+    _, φ_rb = solve(rbres.h, rbres.basis.metric, μ, fulldiag)
     rbvecs[idx] = φ_rb
     magnetization[idx] = mean(u -> abs(dot(u, m_reduced, u)), eachcol(φ_rb))
 end

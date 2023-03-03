@@ -1,7 +1,7 @@
 """
     print_callback(info)
 
-Print diagnostic information in each assembly iterations.
+Print diagnostic information at each assembly iteration.
 """
 function print_callback(info)
     t_now = time_ns()
@@ -26,6 +26,30 @@ function print_callback(info)
 end
 
 """
+    mps_callback(info)
+    
+Print maximal bond dimension, truncation error and other MPS diagnostics.
+"""
+function mps_callback(info)
+    if info.state == :iterate
+        print("→ ")
+        print("χ_max: ", maxlinkdim.(info.solver_info.vectors), "\t")
+        print("⟨H²⟩-⟨H⟩²: ", round.(info.solver_info.variances; sigdigits=3), "\t")
+        print("iterations: ", info.solver_info.iterations, "\t")
+        print("max. truncerr: ", round(info.solver_info.maxtruncerr; sigdigits=3), "\t")
+        if isone(info.iteration)
+            print("m: ", length(info.solver_info.vectors), "\t")
+        else
+            print("m: ", info.extend_info.keep, "\t")
+            print("λ_min: ", round(info.extend_info.λ_min; sigdigits=3))
+        end
+        println()  # line break
+        flush(stdout)
+    end
+    info
+end
+
+"""
 Carries a `Dict` of `Vector`s which contain information from greedy assembly iterations.
 """
 struct InfoCollector
@@ -39,14 +63,15 @@ state object. Possible fields to select from are:
 
 - `iteration`: number of iteration at which the information was obtained.
 - `err_grid`: error estimate on all parameter points of the training grid.
-- `err_max`: maximal error estimate on the grid.
 - `λ_grid`: RB energies on all training grid points.
-- `φ_grid`: RB vectors on all training grid points.
+- `err_max`: maximal error estimate on the grid.
 - `μ`: parameter point at which truth solve has been performed.
+- `solver_info`: output of the solving method, which includes eigenvalues and vectors.
 - `basis`: `RBasis` at the current iteration.
-- `h_cache`: `HamiltonianCache` at the current iteration.
 - `extend_info`: info that is specific to the chosen extension procedure.
-
+- `condnum`: condition number of the ``B^\\dagger B``.
+- `h`: current reduced Hamiltonian.
+- `h_cache`: `HamiltonianCache` at the current iteration.
 """
 function InfoCollector(fields::Symbol...)
     InfoCollector(Dict(f => [] for f in fields))
