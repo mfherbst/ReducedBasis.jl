@@ -126,13 +126,13 @@ function FullDiagonalization(dm::DMRG)
 end
 
 """
-    default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)
+    default_sweeps(; cutoff_max=1e-9, bonddim_max=1000, iter_max=100)
 
 Return default `ITensors.Sweeps` object for DMRG solves, containing decreasing noise and
 increasing maximal bond dimension ramps.
 """
-function default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)
-    sweeps = Sweeps(100; cutoff=cutoff_max)
+function default_sweeps(; cutoff_max=1e-9, bonddim_max=1000, iter_max=100)
+    sweeps = Sweeps(iter_max; cutoff=cutoff_max)
     setnoise!(sweeps, [10.0^n for n in -1:-2:-10]..., 0.1cutoff_max)
     setmaxdim!(sweeps, [10n for n in 1:2:10]..., bonddim_max)
     sweeps

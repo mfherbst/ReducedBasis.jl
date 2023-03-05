@@ -33,12 +33,12 @@ Print maximal bond dimension, truncation error and other MPS diagnostics.
 function mps_callback(info)
     if info.state == :iterate
         print("→ ")
-        print("χ_max: ", maxlinkdim.(info.solver_info.vectors), "\t")
+        print("χ_max: ", maxlinkdim.(info.basis.snapshots), "\t")
         print("⟨H²⟩-⟨H⟩²: ", round.(info.solver_info.variances; sigdigits=3), "\t")
         print("iterations: ", info.solver_info.iterations, "\t")
         print("max. truncerr: ", round(info.solver_info.maxtruncerr; sigdigits=3), "\t")
         if isone(info.iteration)
-            print("m: ", length(info.solver_info.vectors), "\t")
+            print("m: ", length(info.basis.snapshots), "\t")
         else
             print("m: ", info.extend_info.keep, "\t")
             print("λ_min: ", round(info.extend_info.λ_min; sigdigits=3))
@@ -66,9 +66,10 @@ state object. Possible fields to select from are:
 - `λ_grid`: RB energies on all training grid points.
 - `err_max`: maximal error estimate on the grid.
 - `μ`: parameter point at which truth solve has been performed.
-- `solver_info`: output of the solving method, which includes eigenvalues and vectors.
+- `solver_info`: output of the solving method, which excludes eigenvalues and vectors.
 - `basis`: `RBasis` at the current iteration.
-- `extend_info`: info that is specific to the chosen extension procedure.
+- `extend_info`: info that is specific to the chosen extension procedure, not including
+the extended `RBasis`.
 - `condnum`: condition number of the ``B^\\dagger B``.
 - `h`: current reduced Hamiltonian.
 - `h_cache`: `HamiltonianCache` at the current iteration.

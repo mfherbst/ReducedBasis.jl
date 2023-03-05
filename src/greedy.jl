@@ -154,9 +154,10 @@ function assemble(info::NamedTuple, H::AffineDecomposition, grid, greedy::Greedy
         # Update basis with new snapshot/vector/metric and compute reduced terms
         h_cache = HamiltonianCache(info.h_cache, ext.basis)
 
-        # Update iteration state info
+        # Update iteration state info (use Base.structdiff to remove keys from NamedTuple)
         info_new = (; iteration=n, err_grid, λ_grid, err_max, μ=μ_next,
-                    solver_info=truth, basis=ext.basis, extend_info=ext,
+                    solver_info=Base.structdiff(truth, (; values=nothing, vectors=nothing)),
+                    basis=ext.basis, extend_info=Base.structdiff(ext, (; basis=nothing)),
                     condnum=metric_condition, h=h_cache.h, h_cache,
                     cache=info.cache, state=:iterate)
         info = callback(info_new)
