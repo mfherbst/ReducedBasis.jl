@@ -22,7 +22,7 @@ function reconstruct(mps::MPS)
     for c in combos
         val = ITensor(1)
         for i in eachindex(mps)
-            val *= mps[i] * state(sites[i], c[i])  # Extract state from MPS at index i
+            val *= mps[i] * dag(state(sites[i], c[i]))  # Extract state from MPS at index i
         end
         vec[c...] = scalar(val)
     end
@@ -149,7 +149,7 @@ The length of the `Ψ₀` vector determines the number of targeted states, given
 `dm.n_states > 1` and `dm.tol_degeneracy > 0`.
 When `nothing` is provided as an initial guess, `dm.n_states` random MPS are used.
 """
-function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm::DMRG)
+function solve(H::AffineDecomposition, μ, Ψ₀::Vector{MPS}, dm::DMRG)
     observer = dm.observer()
     H_full = H(μ)
     E₁, Ψ₁ = dmrg(H_full, Ψ₀[1], dm.sweeps; observer, outputlevel=0)
@@ -172,8 +172,8 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
         end
     end
 
-    variances   = [abs(inner(H_full, Ψ, H_full, Ψ) - inner(Ψ', H_full, Ψ)^2) for Ψ in vectors]
-    iterations  = length(observer.energies)
+    variances = [abs(inner(H_full, Ψ, H_full, Ψ) - inner(Ψ', H_full, Ψ)^2) for Ψ in vectors]
+    iterations = length(observer.energies)
     maxtruncerr = maximum(observer.truncerrs)
     if dm.verbose
         length(vectors) > 1 &&
@@ -212,4 +212,25 @@ function interpolate(basis::RBasis{MPS}, h::AffineDecomposition, μ, solver_onli
         end
         mps
     end
+end
+
+"""
+    mps_callback(info)
+    
+Print maximal bond dimension, truncation error and other MPS diagnostics.
+"""
+function mps_callback(info)
+    if info.state == :iterate
+        m = isone(info.iteration) ? length(info.basis.snapshots) : info.extend_info.keep
+        print("→ ")
+        print("χ_max: ", maxlinkdim(info.basis.snapshots[end]), "\t")
+        print("⟨H²⟩-⟨H⟩²: ", round.(info.solver_info.variances; sigdigits=3), "\t")
+        print("iterations: ", info.solver_info.iterations, "\t")
+        print("max. truncerr: ", round(info.solver_info.maxtruncerr; sigdigits=3), "\t")
+        print("m: ", m, "\t")
+        !isone(info.iteration) && print("λ_min: ", round(info.extend_info.λ_min; sigdigits=3))
+        println()  # line break
+        flush(stdout)
+    end
+    info
 end

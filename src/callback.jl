@@ -26,30 +26,6 @@ function print_callback(info)
 end
 
 """
-    mps_callback(info)
-    
-Print maximal bond dimension, truncation error and other MPS diagnostics.
-"""
-function mps_callback(info)
-    if info.state == :iterate
-        print("→ ")
-        print("χ_max: ", maxlinkdim.(info.basis.snapshots), "\t")
-        print("⟨H²⟩-⟨H⟩²: ", round.(info.solver_info.variances; sigdigits=3), "\t")
-        print("iterations: ", info.solver_info.iterations, "\t")
-        print("max. truncerr: ", round(info.solver_info.maxtruncerr; sigdigits=3), "\t")
-        if isone(info.iteration)
-            print("m: ", length(info.basis.snapshots), "\t")
-        else
-            print("m: ", info.extend_info.keep, "\t")
-            print("λ_min: ", round(info.extend_info.λ_min; sigdigits=3))
-        end
-        println()  # line break
-        flush(stdout)
-    end
-    info
-end
-
-"""
 Carries a `Dict` of `Vector`s which contain information from greedy assembly iterations.
 """
 struct InfoCollector
