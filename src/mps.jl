@@ -221,14 +221,18 @@ Print maximal bond dimension, truncation error and other MPS diagnostics.
 """
 function mps_callback(info)
     if info.state == :iterate
-        m = isone(info.iteration) ? length(info.basis.snapshots) : info.extend_info.keep
         print("→ ")
         print("χ_max: ", maxlinkdim(info.basis.snapshots[end]), "\t")
         print("⟨H²⟩-⟨H⟩²: ", round.(info.solver_info.variances; sigdigits=3), "\t")
         print("iterations: ", info.solver_info.iterations, "\t")
         print("max. truncerr: ", round(info.solver_info.maxtruncerr; sigdigits=3), "\t")
-        print("m: ", m, "\t")
-        !isone(info.iteration) && print("λ_min: ", round(info.extend_info.λ_min; sigdigits=3))
+        if isone(info.iteration)
+            print("m: ", length(info.basis.snapshots), "\t")
+        else
+            print("m: ", info.extend_info.keep, "\t")
+            λ_min = round(minimum(info.extend_info.Λ); sigdigits=3)
+            print("λ_min: ", λ_min)
+        end
         println()  # line break
         flush(stdout)
     end

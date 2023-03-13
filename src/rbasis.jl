@@ -199,7 +199,7 @@ function extend(basis::RBasis, new_snapshot::AbstractVector, μ, ed::EigenDecomp
         λ_error_trunc = λ²_errors[idx_trunc]
         keep          = idx_trunc - dimension(basis)
         if keep ≤ 0  # Return old basis, if no significant snapshots can be added
-            return (; basis, keep, λ_error_trunc, λ_min=minimum(Λ))
+            return (; basis, keep, Λ, λ_error_trunc)
         end
 
         if keep != length(new_snapshot)  # Truncate/compress
@@ -215,5 +215,5 @@ function extend(basis::RBasis, new_snapshot::AbstractVector, μ, ed::EigenDecomp
 
     (; basis=RBasis(snapshots, parameters, vectors_new,
                     overlaps, vectors_new' * overlaps * vectors_new),
-       keep, λ_error_trunc, λ_min=minimum(Λ))
+     keep, Λ, λ_error_trunc)
 end
