@@ -190,6 +190,7 @@ function extend(basis::RBasis, new_snapshot::AbstractVector, μ, ed::EigenDecomp
 
     # Orthonormalization via eigenvalue decomposition
     Λ, U = eigen(Hermitian(overlaps))  # Hermitian to automatically sort by smallest λ
+    Λ = abs.(Λ)  # Remove zero elements with negative sign
     λ_error_trunc = 0.0
     keep = 1
     if !iszero(ed.cutoff)
@@ -211,7 +212,7 @@ function extend(basis::RBasis, new_snapshot::AbstractVector, μ, ed::EigenDecomp
     end
     snapshots   = append!(copy(basis.snapshots), new_snapshot[1:keep])  # TODO: use ordering of Λ
     parameters  = append!(copy(basis.parameters), fill(μ, keep))
-    vectors_new = U * Diagonal(1 ./ sqrt.(abs.(Λ)))
+    vectors_new = U * Diagonal(1 ./ sqrt.(Λ))
 
     (; basis=RBasis(snapshots, parameters, vectors_new,
                     overlaps, vectors_new' * overlaps * vectors_new),

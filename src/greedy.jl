@@ -41,7 +41,7 @@ Greedy reduced basis assembling strategy.
     estimator::ErrorEstimate
     tol::Float64      = 1e-3
     n_truth_max::Int  = 64
-    Ψ_init::Function  = rb_guess
+    Ψ_init            = rb_guess
     verbose::Bool     = true
     exit_checks::Bool = true
 end

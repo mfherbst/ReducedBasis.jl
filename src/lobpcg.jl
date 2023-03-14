@@ -75,7 +75,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Matrix, lobpcg::LOBPCG)
     !(size(Ψ₀, 1) == size(H, 1)) && error("Ψ₀ and H dimensions don't match")
     if size(Ψ₀, 2) < lobpcg.n_target + lobpcg.n_ep_extra
         Ψ₀_extra = randn(ComplexF64, size(Ψ₀, 1),
-                            lobpcg.n_target + lobpcg.n_ep_extra - size(Ψ₀, 2))
+                         lobpcg.n_target + lobpcg.n_ep_extra - size(Ψ₀, 2))
         Ψ₀_extra .-= Ψ₀ * (Ψ₀' * Ψ₀_extra)  # Project to orthogonal complement
         Ψ₀_extra = Matrix(qr(Ψ₀_extra).Q)  # Orthonormalize via QR
         Ψ₀ = hcat(Ψ₀, Ψ₀_extra)

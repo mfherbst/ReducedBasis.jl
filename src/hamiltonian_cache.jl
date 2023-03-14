@@ -46,6 +46,10 @@ Hamiltonian applications and inner products.
 function HamiltonianCache(hc::HamiltonianCache, basis::RBasis{V,T}) where {V,T}
     d_basis = dimension(basis)
     m = multiplicity(basis)[end]  # Multiplicity of last truth solve
+    if d_basis == length(hc.HΨ[1])  # In case no new vector was added to basis
+        @warn "basis does not contain a new snapshot"
+        return hc
+    end
 
     # Compute new Hamiltonian application HΨ
     HΨ = copy(hc.HΨ)  # To make function non-mutating
