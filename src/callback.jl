@@ -1,7 +1,7 @@
 """
     print_callback(info)
 
-Print diagnostic information in each assembly iterations.
+Print diagnostic information at each assembly iteration.
 """
 function print_callback(info)
     t_now = time_ns()
@@ -39,14 +39,16 @@ state object. Possible fields to select from are:
 
 - `iteration`: number of iteration at which the information was obtained.
 - `err_grid`: error estimate on all parameter points of the training grid.
-- `err_max`: maximal error estimate on the grid.
 - `λ_grid`: RB energies on all training grid points.
-- `φ_grid`: RB vectors on all training grid points.
+- `err_max`: maximal error estimate on the grid.
 - `μ`: parameter point at which truth solve has been performed.
+- `solver_info`: output of the solving method, which excludes eigenvalues and vectors.
 - `basis`: `RBasis` at the current iteration.
+- `extend_info`: info that is specific to the chosen extension procedure, not including
+the extended `RBasis`.
+- `condnum`: condition number of the ``B^\\dagger B``.
+- `h`: current reduced Hamiltonian.
 - `h_cache`: `HamiltonianCache` at the current iteration.
-- `extend_info`: info that is specific to the chosen extension procedure.
-
 """
 function InfoCollector(fields::Symbol...)
     InfoCollector(Dict(f => [] for f in fields))

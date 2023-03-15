@@ -13,8 +13,7 @@ using ReducedBasis
     hJ_on    = range(first(hJ_off), last(hJ_off); length=100)
     grid_on  = RegularGrid(Δ_on, hJ_on)
 
-    greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=32,
-                    init_from_rb=true, verbose=false)
+    greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=32, verbose=false)
     qrcomp = QRCompress(; tol=1e-10)
     pod    = POD(; n_vectors=32, verbose=false)
 

@@ -22,7 +22,7 @@ function reconstruct(mps::MPS)
     for c in combos
         val = ITensor(1)
         for i in eachindex(mps)
-            val *= mps[i] * state(sites[i], c[i])  # Extract state from MPS at index i
+            val *= mps[i] * dag(state(sites[i], c[i]))  # Extract state from MPS at index i
         end
         vec[c...] = scalar(val)
     end
@@ -89,7 +89,7 @@ Compute sum with `ApproxMPO`s using the exact `ITensors` operator sum.
 function (ad::AffineDecomposition{<:AbstractArray{<:ApproxMPO}})(μ)
     θ = ad.coefficients(μ)
     opsum = sum(c * term.opsum for (c, term) in zip(θ, ad.terms))
-    MPO(opsum, last.(siteinds(ad.terms[1].mpo)))
+    MPO(opsum, noprime.(first.(siteinds(ad.terms[1].mpo))))
 end
 
 """
@@ -126,30 +126,30 @@ function FullDiagonalization(dm::DMRG)
 end
 
 """
-    default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)
+    default_sweeps(; cutoff_max=1e-9, bonddim_max=1000, iter_max=100)
 
 Return default `ITensors.Sweeps` object for DMRG solves, containing decreasing noise and
 increasing maximal bond dimension ramps.
 """
-function default_sweeps(; cutoff_max=1e-9, bonddim_max=1000)
-    sweeps = Sweeps(100; cutoff=cutoff_max)
+function default_sweeps(; cutoff_max=1e-9, bonddim_max=1000, iter_max=100)
+    sweeps = Sweeps(iter_max; cutoff=cutoff_max)
     setnoise!(sweeps, [10.0^n for n in -1:-2:-10]..., 0.1cutoff_max)
     setmaxdim!(sweeps, [10n for n in 1:2:10]..., bonddim_max)
     sweeps
 end
 
 """
-    solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm::DMRG)
+    solve(H::AffineDecomposition, μ, Ψ₀::Vector{MPS}, dm::DMRG)
+    solve(H::AffineDecomposition, μ, Ψ₀::MPS, dm::DMRG)
+    solve(H::AffineDecomposition, μ, ::Nothing, dm::DMRG)
 
-Solve using [`DMRG`](@ref). When `nothing` is provided as an initial guess,
-`dm.n_states` random MPS are used.
+Solve using [`DMRG`](@ref).
+
+The length of the `Ψ₀` vector determines the number of targeted states, given that
+`dm.n_states > 1` and `dm.tol_degeneracy > 0`.
+When `nothing` is provided as an initial guess, `dm.n_states` random MPS are used.
 """
-function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm::DMRG)
-    if isnothing(Ψ₀)
-        # last.(siteinds(...)) for two physical indices per tensor, last for non-primed index
-        Ψ₀ = fill(randomMPS(last.(siteinds(H.terms[1].mpo));
-                  linkdims=dm.sweeps.maxdim[1]), dm.n_states)
-    end
+function solve(H::AffineDecomposition, μ, Ψ₀::Vector{MPS}, dm::DMRG)
     observer = dm.observer()
     H_full = H(μ)
     E₁, Ψ₁ = dmrg(H_full, Ψ₀[1], dm.sweeps; observer, outputlevel=0)
@@ -172,8 +172,9 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
         end
     end
 
-    variances  = [abs(inner(H_full, Ψ, H_full, Ψ) - inner(Ψ', H_full, Ψ)^2) for Ψ in vectors]
+    variances = [abs(inner(H_full, Ψ, H_full, Ψ) - inner(Ψ', H_full, Ψ)^2) for Ψ in vectors]
     iterations = length(observer.energies)
+    maxtruncerr = maximum(observer.truncerrs)
     if dm.verbose
         length(vectors) > 1 &&
             println("Degenerate point μ = $μ found with m = $(length(vectors))")
@@ -182,8 +183,18 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Vector{MPS},Nothing}, dm
         end
     end
 
-    (; values, vectors, variances, iterations)
+    (; values, vectors, variances, iterations, maxtruncerr)
 end
+
+solve(H::AffineDecomposition, μ, Ψ₀::MPS, dm::DMRG) = solve(H, μ, [Ψ₀], dm)
+
+function solve(H::AffineDecomposition, μ, ::Nothing, dm::DMRG)
+    # noprime(first.(siteinds(...)()) to obtain original sites
+    sites = noprime.(first.(siteinds(H.terms[1].mpo)))
+    Ψ₀ = fill(randomMPS(sites; linkdims=dm.sweeps.maxdim[1]), dm.n_states)
+    solve(H, μ, Ψ₀, dm)
+end
+
 
 """
     interpolate(basis::RBasis{MPS}, h::AffineDecomposition, μ, dm::DMRG, solver_online)
@@ -191,14 +202,39 @@ end
 Compute ground state MPS at `μ` from the reduced basis by MPS addition in
 ``| \\Phi(\\bm{\\mu}) \\rangle = \\sum_{k=1}^{\\dim B} [V \\varphi(\\bm{\\mu_k})]_k\\, | \\Psi(\\bm{\\mu_k}) \\rangle``.
 """
-function interpolate(basis::RBasis{MPS}, h::AffineDecomposition, μ, dm::DMRG, solver_online)
+function interpolate(basis::RBasis{MPS}, h::AffineDecomposition, μ, solver_online; bonddim_max=10)
     _, φ_rb = solve(h, basis.metric, μ, solver_online)
     φ_trans = basis.vectors * φ_rb
     map(eachcol(φ_trans)) do col  # Add MPS and multiply by φ coefficients
         mps = col[1] * basis.snapshots[1]
         for k in 2:dimension(basis)
-            mps = +(mps, col[k] * basis.snapshots[k]; maxdim=dm.sweeps.maxdim[1])
+            mps = +(mps, col[k] * basis.snapshots[k]; maxdim=bonddim_max)
         end
         mps
     end
+end
+
+"""
+    mps_callback(info)
+    
+Print maximal bond dimension, truncation error and other MPS diagnostics.
+"""
+function mps_callback(info)
+    if info.state == :iterate
+        print("→ ")
+        print("χ_max: ", maxlinkdim(info.basis.snapshots[end]), "\t")
+        print("⟨H²⟩-⟨H⟩²: ", round.(info.solver_info.variances; sigdigits=3), "\t")
+        print("iterations: ", info.solver_info.iterations, "\t")
+        print("max. truncerr: ", round(info.solver_info.maxtruncerr; sigdigits=3), "\t")
+        if isone(info.iteration)
+            print("m: ", length(info.basis.snapshots), "\t")
+        else
+            print("m: ", info.extend_info.keep, "\t")
+            λ_min = round(minimum(info.extend_info.Λ); sigdigits=3)
+            print("λ_min: ", λ_min)
+        end
+        println()  # line break
+        flush(stdout)
+    end
+    info
 end

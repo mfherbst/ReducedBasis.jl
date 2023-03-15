@@ -113,7 +113,7 @@ using Statistics
 wavevectors = [0.0, π/4, π/2, π]
 sf = [zeros(size(grid_online)) for _ in 1:length(wavevectors)]
 for (idx, μ) in pairs(grid_online)
-    _, φ_rb = solve(rbres.h_cache.h, rbres.basis.metric, μ, fulldiag)
+    _, φ_rb = solve(rbres.h, rbres.basis.metric, μ, fulldiag)
     for (i, k) in enumerate(wavevectors)
         sf[i][idx] = mean(u -> real(dot(u, sfspin(k), u)), eachcol(φ_rb))
     end

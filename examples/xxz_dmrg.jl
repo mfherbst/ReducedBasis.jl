@@ -122,7 +122,7 @@ grid_online = RegularGrid(Δ_online, hJ_online)
 
 using Statistics
 magnetization = map(grid_online) do μ
-    _, φ_rb = solve(rbres.h_cache.h, rbres.basis.metric, μ, fulldiag)
+    _, φ_rb = solve(rbres.h, rbres.basis.metric, μ, fulldiag)
     mean(u -> abs(dot(u, m_reduced, u)), eachcol(φ_rb))
 end;
 

@@ -119,7 +119,7 @@ using ReducedBasis: reconstruct
     
     @testset "Initial guess from RB eigenvector" begin
         greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, 
-                        init_from_rb=true, verbose=false)
+                        Ψ_init=rb_guess, verbose=false)
         @testset "Greedy assembly: degenerate" begin
             collector = InfoCollector(:λ_grid)
             info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=collector)
@@ -139,7 +139,7 @@ using ReducedBasis: reconstruct
 
     @testset "Random initial guess" begin
         greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, 
-                        init_from_rb=false, verbose=false)
+                        Ψ_init=random_guess, verbose=false)
         @testset "Greedy assembly: degenerate" begin
             collector = InfoCollector(:λ_grid)
             info = assemble(H, grid_off, greedy, dm_deg, edcomp; callback=collector)
@@ -156,4 +156,36 @@ using ReducedBasis: reconstruct
             test_low_errors(info, greedy, dm_nondeg)
         end
     end
+
+    @testset "MPS callback" begin
+        greedy = Greedy(; estimator=Residual(), tol=1e-3, n_truth_max=64, 
+                        Ψ_init=random_guess, verbose=false)
+        @testset "Greedy assembly: degenerate" begin
+            collector = InfoCollector(:λ_grid)
+            info = assemble(H, grid_off, greedy, dm_deg, edcomp;
+                            callback=collector ∘ mps_callback)
+            @test multiplicity(info.basis)[1] > 1
+            test_variational(collector)
+            test_L6_magn_plateaus(info, dm_deg)
+            test_low_errors(info, greedy, dm_deg)
+        end
+        @testset "Greedy assembly: non-degenerate" begin
+            info = assemble(H, grid_off, greedy, dm_nondeg, edcomp;
+                            callback=mps_callback ∘ print_callback)
+            test_L6_magn_plateaus(info, dm_nondeg)
+            test_low_errors(info, greedy, dm_nondeg)
+        end
+    end
+end
+
+@testset "Reconstruct" begin
+    sites = siteinds("S=1", 6)
+    rmps  = randomMPS(sites, 4)
+    vec   = ReducedBasis.reconstruct(rmps)
+    @test length(vec) == 3^6
+
+    qnsites = siteinds("S=1/2", 6; conserve_sz=true)
+    qnmps   = MPS(qnsites, ["Up", "Dn", "Dn", "Up", "Up", "Up"])
+    qnvec   = ReducedBasis.reconstruct(qnmps)
+    @test length(qnvec) == 2^6
 end

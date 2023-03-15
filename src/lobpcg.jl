@@ -64,25 +64,21 @@ function FullDiagonalization(lobpcg::LOBPCG)
 end
 
 """
-    solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg::LOBPCG)
+    solve(H::AffineDecomposition, μ, Ψ₀::Matrix, lobpcg::LOBPCG)
+    solve(H::AffineDecomposition, μ, ::Nothing, lobpcg::LOBPCG)
 
 Solve using [`LOBPCG`](@ref). If `nothing` is provided as an initial guess,
 an orthogonal random matrix will be used with `lobpcg.n_target + lobpcg.n_ep_extra`
 column vectors.
 """
-function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg::LOBPCG)
-    if isnothing(Ψ₀)  # Build initial guess if needed
-        n_states = lobpcg.n_target + lobpcg.n_ep_extra
-        Ψ₀ = Matrix(qr(randn(ComplexF64, size(H, 1), n_states)).Q)
-    else
-        !(size(Ψ₀, 1) == size(H, 1)) && error("Ψ₀ and H dimensions don't match")
-        if size(Ψ₀, 2) < lobpcg.n_target + lobpcg.n_ep_extra
-            Ψ₀_extra = randn(ComplexF64, size(Ψ₀, 1),
-                             lobpcg.n_target + lobpcg.n_ep_extra - size(Ψ₀, 2))
-            Ψ₀_extra .-= Ψ₀ * (Ψ₀' * Ψ₀_extra)  # Project to orthogonal complement
-            Ψ₀_extra = Matrix(qr(Ψ₀_extra).Q)  # Orthonormalize via QR
-            Ψ₀ = hcat(Ψ₀, Ψ₀_extra)
-        end
+function solve(H::AffineDecomposition, μ, Ψ₀::Matrix, lobpcg::LOBPCG)
+    !(size(Ψ₀, 1) == size(H, 1)) && error("Ψ₀ and H dimensions don't match")
+    if size(Ψ₀, 2) < lobpcg.n_target + lobpcg.n_ep_extra
+        Ψ₀_extra = randn(ComplexF64, size(Ψ₀, 1),
+                         lobpcg.n_target + lobpcg.n_ep_extra - size(Ψ₀, 2))
+        Ψ₀_extra .-= Ψ₀ * (Ψ₀' * Ψ₀_extra)  # Project to orthogonal complement
+        Ψ₀_extra = Matrix(qr(Ψ₀_extra).Q)  # Orthonormalize via QR
+        Ψ₀ = hcat(Ψ₀, Ψ₀_extra)
     end
 
     # Assemble Hamiltonian for parameter value μ
@@ -156,4 +152,10 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Union{Matrix,Nothing}, lobpcg:
                 converged=true, iterations=iterations,
                 X=vec, λ=val .- lobpcg.shift)
     end
+end
+
+function solve(H::AffineDecomposition, μ, ::Nothing, lobpcg::LOBPCG)
+    n_states = lobpcg.n_target + lobpcg.n_ep_extra
+    Ψ₀ = Matrix(qr(randn(ComplexF64, size(H, 1), n_states)).Q)
+    solve(H, μ, Ψ₀, lobpcg)
 end

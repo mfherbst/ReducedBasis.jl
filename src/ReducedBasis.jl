@@ -32,11 +32,11 @@ export default_sweeps
 include("mps.jl")
 
 export InfoCollector
-export print_callback
+export print_callback, mps_callback
 include("callback.jl")
 
 export Greedy, ErrorEstimate, Residual
-export estimate_error, assemble, interpolate
+export estimate_error, assemble, interpolate, rb_guess, random_guess
 include("greedy.jl")
 
 export POD
