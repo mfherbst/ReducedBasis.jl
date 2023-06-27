@@ -18,3 +18,14 @@ at any parameter value with only a modest complexity scaling independently
 from the dimension of the initial eigenvalue problem.
 
 For more details [see our documentation](https://mfherbst.github.io/ReducedBasis.jl/stable/).
+
+If you find this work useful, please cite
+
+> @article{Brehmer2023,
+>   author = {Brehmer, Paul and Herbst, Michael F. and Wessel, Stefan and Rizzi, Matteo and Stamm, Benjamin},
+>   title = {Reduced basis surrogates for quantum spin systems based on tensor networks},
+>   url = {http://arxiv.org/abs/2304.13587v2},
+>   eprint = {2304.13587v2},
+>   month = {Apr},
+>   year = {2023},
+> }
