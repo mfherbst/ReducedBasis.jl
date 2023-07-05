@@ -120,34 +120,37 @@ scatter!(hm, xpoints, ypoints; marker_kwargs...)
 # reduced basis vectors, we can compute the so-called *participation ratio* 
 # 
 # ```math
-# \mathrm{PR}(\varphi) = \frac{1}{d} \frac{1}{\sum_{k=1}^d |\varphi_k|^4}
+# \mathrm{PR}(\phi) = \frac{1}{d} \frac{1}{\sum_{k=1}^d |\phi_k|^4}
 # ```
 #
-# where we assume the RB vector ``\varphi`` to normalized. For a maximally mixing RB vector
-# with elements ``\varphi_k = 1/\sqrt{d}`` the participation ratio becomes maximal, whereas
-# a unit vector would produce the minimal participation ratio. The RB vectors from before
-# produce the following ``\mathrm{PR}``:
+# where we assume the transformed RB vector ``\phi = V \varphi`` to be normalized. For a
+# maximally mixing RB vector with elements ``\phi_k = 1/\sqrt{d}`` the participation ratio
+# becomes maximal with ``\mathrm{PR}=1``, whereas a unit vector would produce the minimal
+# participation ratio of ``\mathrm{PR}=1/d``. The RB vectors from before produce the
+# following ``\mathrm{PR}``:
 
 d = dimension(rbres.basis)
 pr = map(rbvecs) do φ
-    1 / (d * sum(x -> abs2(x)^2, φ))
+    ϕ = rbres.basis.vectors * φ
+    1 / (d * sum(x -> abs2(x)^2, ϕ / norm(ϕ)))
 end
 
 hm = heatmap(xrange, yrange, pr'; title="participation ratio", hm_kwargs...)
 scatter!(hm, xpoints, ypoints; marker_kwargs...)
 
 # Another way to look at the online vectors is to find the maximal coefficient of each
-# vector on the online grid and then assign it a color. The resulting heatmap displays —
-# depending on the compression method — Voronoi-like cells around the snapshot parameter
-# points. Using the collected info contained in the `collector`, we can even animate these
-# cells with respect to the greedy iterations:
+# vector (again the transformed ``\phi``) on the online grid and then assign it a color.
+# The resulting heatmap displays Voronoi-like cells around the snapshot parameter points.
+# Using the collected info contained in the `collector`,we can even animate these cells
+# with respect to the greedy iterations:
 
 anim = @animate for n in 1:dimension(rbres.basis)
     data = collector.data
-    vecs = map(grid_online) do μ
-        solve(data[:h_cache][n].h, data[:basis][n].metric, μ, fulldiag)[2]
+    ϕ = map(grid_online) do μ
+        _, φ = solve(data[:h_cache][n].h, data[:basis][n].metric, μ, fulldiag)
+        data[:basis][n].vectors * φ
     end
-    voronoi = map(φ -> findmax(abs.(@view φ[:, 1]))[2], vecs)
+    voronoi = map(φ -> findmax(abs.(@view φ[:, 1]))[2], ϕ)
     hm = heatmap(xrange, yrange, voronoi';
                  title="Voronoi", clims=(1, 8), hm_kwargs...)
     p = unique(data[:basis][n].parameters)
