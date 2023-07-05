@@ -54,30 +54,35 @@ end
 
 """
     overlap_matrix(v1::Vector, v2::Vector)
+    overlap_matrix(f, v1::Vector, v2::Vector)
 
 Compute the overlap matrix of two sets of vector-like objects `v1` and `v2`.
 
 The computed matrix elements are the dot products `dot(v1[i], v2[j])`.
 Correspondingly, the elements of `v1` and `v2` must support a `LinearAlgebra.dot` method.
 In the case where `v1 = v2`, the Gram matrix is computed.
+
+Optionally, a function `f` can be provided which is applied to each element of `v2`.
 """
-function overlap_matrix(v1::Vector, v2::Vector)
+function overlap_matrix(f, v1::Vector, v2::Vector)
     if length(v1) == length(v2)
-        overlaps = map(CartesianIndices((1:length(v1), 1:length(v2)))) do idx
+        overlaps = map(Iterators.product(1:length(v1), 1:length(v2))) do (i, j) 
             # Strong zeros on lower triangle
-            (first(idx.I) > last(idx.I)) ? false : dot(v1[first(idx.I)], v2[last(idx.I)])
+            (i > j) ? false : dot(v1[i], f(v2[j]))
         end  # Returns Matrix{Number}
         for j in 1:length(v2), i in j:length(v1)  # Use hermiticity to fill lower triangle
             overlaps[i, j] = overlaps[j, i]'
         end
         return promote_type.(overlaps)  # Convert to floating-point type
     else  # Do not use hermiticity
-        overlaps = map(CartesianIndices((1:length(v1), 1:length(v2)))) do idx
-            dot(v1[first(idx.I)], v2[last(idx.I)])
+        overlaps = map(Iterators.product(1:length(v1), 1:length(v2))) do (i, j)
+            dot(v1[i], f(v2[j]))
         end
         return overlaps
     end
 end
+
+overlap_matrix(v1::Vector, v2::Vector) = overlap_matrix(x -> x, v1, v2)
 
 """
     extend_overlaps(old_overlaps::Matrix, old_snapshots::Vector, new_snapshot::Vector)

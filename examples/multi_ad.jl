@@ -78,14 +78,14 @@ rbres = assemble(H, grid_train, greedy, lobpcg, qrcomp);
 # ``k``-dependency in the coefficients. The double-sum can be encoded by putting all
 # ``S^z_r S^z_{r'}`` combinations into a ``L \times L`` matrix:
 
-terms = map(idx -> to_global(σz, L, first(idx.I)) * to_global(σz, L, last(idx.I)),
-            CartesianIndices((1:L, 1:L)));
+terms = map(idx -> to_global(σz, L, idx[1]) * to_global(σz, L, idx[2]),
+            Iterators.product(1:L, 1:L));
 
 # Correspondingly, the coefficient function now has to map one ``k`` value to a matrix of
 # coefficients of the same size as the `terms` matrix:
 
-coefficients = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
-                        CartesianIndices((1:L, 1:L)));
+coefficients = k -> map(idx -> cis(-(idx[1] - idx[2]) * k) / L,
+                        Iterators.product(1:L, 1:L));
 
 # One feature of the structure factor that also shows up in many other affine decompositions
 # with double-sums is that the term indices commute, i.e. ``O_{r,r'} = O_{r',r}``. In that

@@ -180,7 +180,7 @@ end
 
 @testset "Reconstruct" begin
     sites = siteinds("S=1", 6)
-    rmps  = randomMPS(sites, 4)
+    rmps  = randomMPS(sites; linkdims=4)
     vec   = ReducedBasis.reconstruct(rmps)
     @test length(vec) == 3^6
 
