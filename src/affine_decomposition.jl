@@ -100,13 +100,6 @@ Compress one term of an [`AffineDecomposition`](@ref) `ApproxMPO` type.
 """
 function compress(op, snapshots::AbstractVector)
     overlap_matrix(Ψ -> op * Ψ, snapshots, snapshots)
-    # M = length(snapshots)
-    # matrixel = Matrix{Number}(undef, M, M)
-    # for j in 1:M, i in 1:M
-    #     applied = op * snapshots[j]
-    #     matrixel[i, j] = dot(snapshots[i], applied)
-    # end
-    # promote_type.(matrixel)
 end
 
 """

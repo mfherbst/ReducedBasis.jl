@@ -82,7 +82,7 @@ function overlap_matrix(f, v1::Vector, v2::Vector)
     end
 end
 
-overlap_matrix(v1::Vector, v2::Vector) = overlap_matrix(x -> x, v1, v2)
+overlap_matrix(v1::Vector, v2::Vector) = overlap_matrix(identity, v1, v2)
 
 """
     extend_overlaps(old_overlaps::Matrix, old_snapshots::Vector, new_snapshot::Vector)
