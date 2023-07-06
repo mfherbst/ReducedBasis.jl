@@ -1,13 +1,12 @@
 # # The reduced basis workflow
 #
-# In this first example we want to provide an introduction to the reduced basis framework
+# In this first example we want to provide an introduction to the RB framework
 # as applied to quantum spin systems. We want to see, from start to finish, how to set up
 # a physical model, how to generate a surrogate basis and how to finally compute observable
-# quantities. For that purpose, we cover the three basic steps of the reduced basis
-# workflow:
+# quantities. For that purpose, we cover the three basic steps of the RB workflow:
 #
 # 1. Model setup: We first need to initialize the model Hamiltonian and the associated physical parameters.
-# 2. Offline phase: An assembly strategy and a truth solving method is chosen, with which we generate the reduced basis surrogate and we prepare observables for later measurement.
+# 2. Offline phase: An assembly strategy and a truth solving method is chosen, with which we generate the RB surrogate and we prepare observables for later measurement.
 # 3. Online phase: Using the surrogate, we measure observables with reduced computational cost.
 #
 # Let us see, how to perform these steps using ReducedBasis.jl.
@@ -24,7 +23,7 @@
 # utilize exact diagonalization techniques to perform the eigenvalue solves to obtain
 # snapshots at the desired parameter points. This means, ``H`` will be represented by a
 # (sparse) matrix and the snapshots by vectors of Hilbert space dimension. Alternatively,
-# one could e.g. provide ``H`` and its ground states in a tensor-based format allowing for
+# one could, e.g., provide ``H`` and its ground states in a tensor-based format allowing for
 # low-rank approximations, which is reserved for a later example.
 #
 # !!! note "Simulation parameters"
@@ -68,7 +67,7 @@ using ReducedBasis
 σy = sparse([0.0 -im; im 0.0])
 σz = sparse([1.0 0.0; 0.0 -1.0]);
 
-# and create a function to make single-site operators global operators at site `i` for a
+# and create a function to promote single-site operators to global operators at site `i` for a
 # many-body system of length `L`:
 
 function to_global(op::M, L::Int, i::Int) where {M<:AbstractMatrix}
@@ -115,8 +114,8 @@ H = xxz_chain(L);
 # to find the lowest eigenvectors of ``H``, for which in this case we use the
 # [`LOBPCG`](@ref) solver. Since the XXZ model as defined above harbors degenerate ground
 # states at some parameter points, we need to choose the right solver settings to account
-# for that. To obtain the ground state subspace, with different eigenvalues are being
-# distinguished up some tolerance `tol_degeneracy`, we set:
+# for that. To obtain the ground-state subspace, with different eigenvalues are being
+# distinguished up to some tolerance `tol_degeneracy`, we set:
 
 lobpcg = LOBPCG(; tol_degeneracy=1e-4);
 
@@ -129,9 +128,21 @@ lobpcg = LOBPCG(; tol_degeneracy=1e-4);
 hJ = range(0.0, 3.5; length=40)
 grid_train = RegularGrid(Δ, hJ);
 
-# For reasons of numerical stability, it is important orthogonalize the reduced basis during
+# !!! note "Choice of training grid"
+#     While in many cases the choice of the training grid does not have a large impact on
+#     the greedy assembly, as long as the resolution is high enough to resolve the physical
+#     features underlying the Hamiltonian, there are some cases where special care is
+#     required. In particular, the initial parameter point that is used to assemble the
+#     basis (see [`assemble`](@ref)) can make crucial differences, when the Hamiltonian
+#     possesses conserved quantities. For instance, for the XXZ chain, we need to choose
+#     ``\bm\mu = (-1,0)`` since ``H`` has plateaus of conserved magnetization (see below),
+#     and any other choice would lock the basis to one particular magnetization sector.
+#     As this is the first parameter point in `grid_train` anyway, we do not need to
+#     further specify the initial parameter point below.
+#
+# For reasons of numerical stability, it is important orthogonalize the RB during
 # assembly (or use similar methods to keep the problem well-conditioned). Hence there are
-# different protocols to extend a reduced basis by a new snapshot. An numerically efficient
+# different protocols to extend a RB by a new snapshot. A numerically efficient
 # way to realize this is to use QR decomposition methods as implemented in
 # [`QRCompress`](@ref). Note that we choose a tolerance `tol` to discard snapshot vectors
 # that do not significantly contribute to the basis:
@@ -140,7 +151,7 @@ qrcomp = QRCompress(; tol=1e-9);
 
 # We lastly need to set the parameters for the greedy basis assembly by creating a
 # [`Greedy`](@ref) object. This includes choosing an error estimate, as well as an error
-# tolerance below which we stop the basis assembly:
+# tolerance below which we use to stop the basis assembly:
 
 greedy = Greedy(; estimator=Residual(), tol=1e-3);
 
@@ -159,7 +170,7 @@ M    = AffineDecomposition([H.terms[3]], [2 / L])
 m, _ = compress(M, rbres.basis);
 
 # Note that the compression again produces an [`AffineDecomposition`](@ref) which now contains
-# only the low-dimensional matrices that operate in reduced basis space. In addition to the
+# only the low-dimensional matrices that operate in RB space. In addition to the
 # compressed observable, [`compress`](@ref) also returns a second decomposition for analysis
 # purposes, which we will not cover in this example and hence did not assign. Since the
 # coefficient ``2L^{-1}`` is actually parameter-independent, we can just construct `m`
@@ -169,11 +180,10 @@ m_reduced = m();
 
 # ## Online phase
 #
-# Having assembled a reduced basis surrogate, we now want to scan the parameter domain by
+# Having assembled a RB surrogate, we now want to scan the parameter domain by
 # measuring observables, in particular the magnetization from above. Fortunately, we have
 # finished all Hilbert-space-dimension dependent steps and only operate in the low
-# dimensional reduced basis space. This allows us to now compute observables on a much finer
-# grid:
+# dimensional RB space. This allows us to now compute observables on a much finer grid:
 
 Δ_online = range(first(Δ), last(Δ); length=100)
 hJ_online = range(first(hJ), last(hJ); length=100)
@@ -181,7 +191,7 @@ grid_online = RegularGrid(Δ_online, hJ_online);
 
 # Instead of solving for the ground states of ``H``, we solve for the lowest eigenvectors of
 # the reduced Hamiltonian in the online phase. Again, we need a solver, which in this case
-# is [`FullDiagonalization`](@ref), i.e. a wrapper around `LinearAlgebra.eigen`. To use
+# is [`FullDiagonalization`](@ref), i.e., a wrapper around `LinearAlgebra.eigen`. To use
 # degeneracy settings that match `lobpcg` from above, we can use the matching constructor:
 
 fulldiag = FullDiagonalization(lobpcg);

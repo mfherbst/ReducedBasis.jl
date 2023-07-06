@@ -41,3 +41,19 @@ using ReducedBasis
         end
     end
 end
+
+@testset "Different overlap_matrix cases" begin 
+    d1 = 5
+    d2 = 3
+    v1 = [rand(5) for _ in 1:d1]
+    v2 = [rand(5) for _ in 1:d2]
+
+    m_same = overlap_matrix(v1, v1)
+    @test all(size(m_same) .== (d1, d1))
+
+    m_diff = overlap_matrix(v1, v2)
+    @test all(size(m_diff) .== (d1, d2))
+
+    m_func = overlap_matrix(x -> x.^2, v1, v2)
+    @test all(m_func .≈ overlap_matrix(v1, map(x -> x.^2, v2)))
+end

@@ -12,7 +12,7 @@
 # O(\bm{\mu}, p) = \sum_{q=1}^Q \alpha_q(\bm{\mu}, p)\, O_q
 # ```
 #
-# To stay within the realm of spin physics, we will consider the so-called
+# To stay within the realm of quantum magnetism, we will consider the so-called
 # *spin structure factor*
 #
 # ```math
@@ -21,7 +21,7 @@
 # O_{r,r'} =  S^z_r S^z_{r'}
 # ```
 #
-# with a wavevector parameter ``k``, to discuss the implementation of a more complicated
+# with a wave vector parameter ``k``, to discuss the implementation of a more complicated
 # observable.
 #
 # To provide a physical setup, we again use the XXZ chain from [The reduced basis workflow](@ref):
@@ -59,12 +59,12 @@ function xxz_chain(L)
     AffineDecomposition([H1, H2, H3], μ -> [1.0, μ[1], -μ[2]])
 end;
 
-# Construct Hamiltonian for XXZ chain with 6 sites ...
+# Construct the Hamiltonian for an XXZ chain with 6 sites ...
 
 L = 6
 H = xxz_chain(L);
 
-# ... and generate a surrogate reduced basis using an exact diagonalization solver.
+# ... and generate a RB surrogate using an exact diagonalization solver.
 
 Δ  = range(-1.0, 2.5; length=40)
 hJ = range( 0.0, 3.5; length=40)
@@ -76,16 +76,16 @@ rbres = assemble(H, grid_train, greedy, lobpcg, qrcomp);
 
 # Now the task is to implement the double-sum in ``\mathcal{S}``, as well as the
 # ``k``-dependency in the coefficients. The double-sum can be encoded by putting all
-# ``S^z_r S^z_{r'}`` combinations into a ``L \times L`` matrix:
+# ``S^z_r S^z_{r'}`` combinations into an ``L \times L`` matrix:
 
-terms = map(idx -> to_global(σz, L, first(idx.I)) * to_global(σz, L, last(idx.I)),
-            CartesianIndices((1:L, 1:L)));
+terms = map(idx -> to_global(σz, L, idx[1]) * to_global(σz, L, idx[2]),
+            Iterators.product(1:L, 1:L));
 
 # Correspondingly, the coefficient function now has to map one ``k`` value to a matrix of
 # coefficients of the same size as the `terms` matrix:
 
-coefficients = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
-                        CartesianIndices((1:L, 1:L)));
+coefficients = k -> map(idx -> cis(-(idx[1] - idx[2]) * k) / L,
+                        Iterators.product(1:L, 1:L));
 
 # One feature of the structure factor that also shows up in many other affine decompositions
 # with double-sums is that the term indices commute, i.e. ``O_{r,r'} = O_{r',r}``. In that
@@ -97,7 +97,7 @@ coefficients = k -> map(idx -> cis(-(first(idx.I) - last(idx.I)) * k) / L,
 SFspin    = AffineDecomposition(terms, coefficients)
 sfspin, _ = compress(SFspin, rbres.basis; symmetric_terms=true);
 
-# In the online evaluation of the structure factor, we then need to define some wavevector
+# In the online evaluation of the structure factor, we then need to define some wave vector
 # values and compute the structure factor at each of them. As usual, we first define a
 # finer online grid of points and the matching online solver:
 
@@ -107,7 +107,7 @@ grid_online = RegularGrid(Δ_online, hJ_online)
 fulldiag    = FullDiagonalization(lobpcg);
 
 # And then we map the grid points to the corresponding structure factor values for a set
-# of different wavevectors:
+# of different wave vectors:
 
 using Statistics
 wavevectors = [0.0, π/4, π/2, π]
@@ -123,7 +123,7 @@ end
 # more wavevector values does not significantly increase the computational cost, since it
 # corresponds to a mere reevaluation of the coefficient functions and small vector-matrix
 # products. Finally, let us see how the structure factor behaves for the different
-# wavevector values:
+# wave vector values:
 
 using Plots
 kwargs = (; xlabel=raw"$\Delta$", ylabel=raw"$h/J$", colorbar=true, leg=false)

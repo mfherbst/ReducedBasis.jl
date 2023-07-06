@@ -43,7 +43,7 @@ using ReducedBasis: AffineDecomposition, n_terms, compress
             ad = AffineDecomposition(terms, coefficients)
             adcomp, adraw = compress(ad, basis; symmetric_terms=true)
             ad_test(terms, ad, adcomp, adraw)
-            for idx in findall(x -> x.I[1] > x.I[2], CartesianIndices(terms))
+            for idx in findall(x -> x[1] > x[2], CartesianIndices(terms))
                 @test adcomp.terms[idx] == adcomp.terms[last(idx.I), first(idx.I)]
                 @test adraw.terms[idx]  == adraw.terms[last(idx.I), first(idx.I)]
             end  # Test equivalence of transposed compressed elements
@@ -54,7 +54,7 @@ using ReducedBasis: AffineDecomposition, n_terms, compress
             ad = AffineDecomposition(terms, coefficients)
             adcomp, adraw = compress(ad, basis; symmetric_terms=true)
             ad_test(terms, ad, adcomp, adraw)
-            for idx in findall(x -> x.I[1] < x.I[2], CartesianIndices(terms))
+            for idx in findall(x -> x[1] < x[2], CartesianIndices(terms))
                 @test adcomp.terms[idx] == adcomp.terms[last(idx.I), first(idx.I)]
                 @test adraw.terms[idx]  == adraw.terms[last(idx.I), first(idx.I)]
             end  # Test equivalence of transposed compressed elements

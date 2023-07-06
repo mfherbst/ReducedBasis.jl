@@ -76,13 +76,13 @@ function compress(ad::AffineDecomposition{<:Matrix}, basis::RBasis; symmetric_te
     # TODO: replace symmetric_terms by some generalized Symmetric type in the long run
     is_nonredundant(a, b) = (size(ad.terms, 1) > size(ad.terms, 2)) ? ≥(a, b) : ≤(a, b)
     matrixel = map(CartesianIndices(ad.terms)) do idx
-        if is_nonredundant(first(idx.I), last(idx.I))  # Upper/lower triangle
+        if is_nonredundant(idx[1], idx[2])  # Upper/lower triangle
             return compress(ad.terms[idx], basis.snapshots)
         end
     end
     for idx in findall(isnothing, matrixel)
         if symmetric_terms
-            matrixel[idx] = matrixel[last(idx.I), first(idx.I)]
+            matrixel[idx] = matrixel[idx[2], idx[1]]
         else
             matrixel[idx] = compress(ad.terms[idx], basis.snapshots)
         end
@@ -99,7 +99,7 @@ end
 Compress one term of an [`AffineDecomposition`](@ref) `ApproxMPO` type.
 """
 function compress(op, snapshots::AbstractVector)
-    overlap_matrix(snapshots, map(Ψ -> op * Ψ, snapshots))
+    overlap_matrix(Ψ -> op * Ψ, snapshots, snapshots)
 end
 
 """
