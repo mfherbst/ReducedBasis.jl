@@ -45,6 +45,10 @@ import LibGit2
 using ReducedBasis
 using Documenter
 using Literate
+using Plots
+
+# Increase default plot margin to avoid cut off axis labels
+default(margin=(3.0, :mm))
 
 #
 # Generate the docs

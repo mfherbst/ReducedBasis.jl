@@ -1,7 +1,7 @@
 # # Basis assembly using Proper Orthogonal Decomposition
 #
 # In [Greedy basis assembly using DMRG](@ref) we have seen that we can customize the
-# snapshot solvers as well as the compression methods during reduced basis assembly.
+# snapshot solvers as well as the compression methods during RB assembly.
 # What we want to demonstrate in this example is that we can also use different strategies
 # for basis assembly altogether. In particular, we will show how to use the Proper
 # Orthogonal Decomposition ([`POD`](@ref)) technique in the offline stage.
@@ -42,12 +42,12 @@ function xxz_chain(L)
 end;
 
 # The conceptual difference between POD and the greedy assembly strategy is that with POD,
-# a truth solve is performed at all parameter points in the selected grid, followed by a
-# singular value decomposition of the snapshot matrix. In this way, we obtain an orthogonal
-# basis by using the singular vectors as our reduced basis. While this procedure is less
+# a truth solve is performed at all parameter points in the selected training grid, followed
+# by a singular value decomposition of the snapshot matrix. In this way, we obtain an
+# orthogonal basis by using the singular vectors as our RB. While this procedure is less
 # complex than the greedy strategy, it comes with the significantly increased cost of having
-# to solve snapshots at all grid points. Nonetheless, it can be useful to e.g. obtain a
-# reference reduced basis and to compare against a greedy basis.
+# to solve snapshots at all grid points. Nonetheless, it can be useful, e.g., to obtain a
+# reference RB and to compare against a greedy basis.
 #
 # So let us stay with the example of the XXZ spin chain and initialize the Hamiltonian as
 # before (using the functions defined in the first example) and choose a grid as well as a
@@ -66,7 +66,7 @@ lobpcg = LOBPCG(; tol_degeneracy=1e-4);
 # parameter points and want to keep the computational effort low. Moreover, we are
 # restricted to exact diagonalization solvers, since we need to explicitly construct the
 # snapshot matrix in order to be able to perform an SVD on it. To assemble using POD, we
-# create a [`POD`](@ref) object where we specify the number of retained columns, i.e.
+# create a [`POD`](@ref) object where we specify the number of retained columns, i.e.,
 # singular vectors of the snapshot matrix:
 
 pod = POD(; n_vectors=24);
@@ -109,6 +109,6 @@ plot!(hm, grid_online.ranges[1], x -> 1 + x; lw=2, ls=:dash, legend=false, color
 
 # The magnetization phase diagram is correctly reproduced, however this time without the
 # parameter point markers being plotted. This is due to the fact that all points in
-# `grid_train` have been solved and incorporated into the reduced basis according to the
+# `grid_train` have been solved and incorporated into the RB according to the
 # POD procedure. The number of retained singular vectors therefore does not correspond
 # directly to snapshots at certain parameter points but to linear combinations of them.

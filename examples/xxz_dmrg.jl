@@ -1,11 +1,12 @@
 # # Greedy basis assembly using DMRG
 #
-# As a follow-up example, we now want to showcase how to compute a reduced basis by means of
-# the [density matrix renormalization group](https://tensornetwork.org/mps/algorithms/dmrg/)
-# (DMRG). To that end, we utilize the ITensors.jl package which, among other things,
-# efficiently implements DMRG. We will see that, while we need to adjust the way we set up
-# the model Hamiltonian as well as our solver, most steps stay the same. Again, we treat the
-# one-dimensional ``S=1/2`` XXZ model from the previous example.
+# As a follow-up example, we now want to showcase how to compute a reduced basis by means
+# of the [density matrix renormalization group](https://tensornetwork.org/mps/algorithms/dmrg/)
+# (DMRG). To that end, we utilize the [ITensors.jl](https://itensor.github.io/ITensors.jl/stable/)
+# package which, among other things, efficiently implements DMRG. We will see that, while
+# we need to adjust the way we set up the model Hamiltonian as well as our solver, most
+# steps stay the same. Again, we treat the one-dimensional ``S=1/2`` XXZ model from the
+# previous example.
 #
 # ## Hamiltonians as `MPO`s
 #
@@ -24,7 +25,7 @@ using Random: seed!
 seed!(0);
 
 # To build the Hamiltonian terms as MPOs, we make use of the `ITensors.OpSum()` object that
-# automatically produces an MPO from a string of operators. The affine MPO terms are then
+# automatically produces a MPO from a string of operators. The affine MPO terms are then
 # stored in an [`AffineDecomposition`](@ref) as [`ApproxMPO`](@ref)s which also include
 # possible truncation keyword arguments:
 
@@ -45,7 +46,7 @@ function xxz_chain(sites::IndexSet; kwargs...)
                         μ -> [1.0, μ[1], -μ[2]])
 end;
 
-# So let us instantiate such an MPO Hamiltonian where we also specify a singular value
+# So let us instantiate such a MPO Hamiltonian where we also specify a singular value
 # `cutoff`, which is passed to the [`ApproxMPO`](@ref) objects:
 
 L = 12
@@ -105,14 +106,14 @@ M    = AffineDecomposition([H.terms[3]], [2 / L])
 m, _ = compress(M, rbres.basis);
 
 # And at that point, we continue as before since we have arrived at the online phase where
-# we only operate in the low-dimensional reduced basis space, agnostic of the snapshot
+# we only operate in the low-dimensional RB space, agnostic of the snapshot
 # solver method. We have to make sure, however, to choose matching degeneracy settings for
 # the [`FullDiagonalization`](@ref) solver in the online phase:
 
 fulldiag = FullDiagonalization(dm);
 
-# Then we can define an online grid and compute magnetization at all grid points, again
-# constructing `m` at an arbitary parameter point since its coefficient is
+# Then we can define an online grid and compute the magnetization at all grid points, again
+# constructing `m` at an arbitrary parameter point since its coefficient is
 # parameter-independent:
 
 m_reduced = m()
@@ -136,6 +137,6 @@ params = unique(rbres.basis.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
          markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)
 
-# We reproduce the ground state phase diagram, but this time with more magnetization
+# We reproduce the ground-state phase diagram, but this time with more magnetization
 # plateaus (due to increased system size) and we see that the greedy algorithm chose
 # different parameter points to solve using DMRG.

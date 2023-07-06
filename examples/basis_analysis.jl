@@ -1,14 +1,14 @@
 # # Analyzing and modifying a reduced basis after assembly
 # 
-# When solving parametrized eigenvalue problems using surrogates, the important question
+# When solving parametrized eigenvalue problems using RB surrogates, the important question
 # arises, to what degree the surrogate actually reflects the behavior of the original
-# problem. In particular, one needs to know if the surrogate contains artifacts that
-# propagate to online measurements of observables. One possibility to evaluate the
-# surrogate quality is the direct comparison of observables and vectors obtained from the
-# reduced basis and truth solver. This, however, is a numerically demanding approach which
-# we will not cover here. So in this example we want to showcase some of the tools that
-# can be used to analyze and correct an assembled basis in the online stage and in a
-# computationally cheap way.
+# problem. In particular, one needs to know if the online measurements of observables
+# contain inaccuracies or unphysical artifacts that stem from a inadequate surrogate. One
+# possibility to evaluate the surrogate quality is the direct comparison of observables
+# and vectors obtained from the RB and truth solver. This, however, is a numerically
+# demanding approach which we will not cover here. So in this example we instead want to
+# showcase some of the tools that can be used to analyze and correct an assembled basis in
+# the online stage and in a computationally cheap way.
 #
 # Before going into the specifics, we first setup an example for which we use the XXZ chain
 # where the snapshots are obtained using DMRG (see
@@ -18,7 +18,7 @@ using LinearAlgebra
 using ITensors
 using ReducedBasis
 using Random: seed!
-seed!(0)  # seed to make example consistent
+seed!(0)  # Seed to make example consistent
 
 function xxz_chain(sites::IndexSet; kwargs...)
     xy_term   = OpSum()
@@ -51,7 +51,7 @@ grid_train = RegularGrid(Δ, hJ);
 #
 # !!! warning "Bad settings"
 #     The offline settings that are chosen here and also later in the example are
-#     intentionally chosen to produce unconverged (and thus wrong) results, i.e. the
+#     intentionally chosen to produce unconverged (and thus wrong) results, i.e., the
 #     "side effects" observed in this example should not happen in real applications and
 #     would indicate inappropriate parameters.
 #
@@ -84,14 +84,14 @@ hJ_online   = range(first(hJ), last(hJ); length=100)
 grid_online = RegularGrid(Δ_online, hJ_online)
 fulldiag    = FullDiagonalization(dm);
 
-# and additionally save all computed reduced basis vectors for later analysis:
+# and additionally save all computed RB coefficients for later analysis:
 
 using Statistics
-rbvecs = similar(grid_online, Matrix{ComplexF64})
+rbcoeff = similar(grid_online, Matrix{ComplexF64})
 magnetization = similar(grid_online, Float64)
 for (idx, μ) in pairs(grid_online)
     _, φ_rb = solve(rbres.h, rbres.basis.metric, μ, fulldiag)
-    rbvecs[idx] = φ_rb
+    rbcoeff[idx] = φ_rb
     magnetization[idx] = mean(u -> abs(dot(u, m_reduced, u)), eachcol(φ_rb))
 end
 
@@ -102,35 +102,36 @@ using Plots
 xrange, yrange = grid_online.ranges[1], grid_online.ranges[2]
 params = unique(rbres.basis.parameters)
 xpoints, ypoints = [μ[1] for μ in params], [μ[2] for μ in params]
-hm_kwargs = (; xlabel=raw"$\Delta$", ylabel=raw"$D/J$", colorbar=true, leg=false)
+hm_kwargs = (; xlabel=raw"$\Delta$", ylabel=raw"$h/J$", colorbar=true, leg=false)
 marker_kwargs = (; markershape=:xcross, mcolor=:springgreen, ms=3.0, msw=2.0);
 
 hm = heatmap(xrange, yrange, magnetization';
              clims=(0.0, 1.0), title="magnetization", hm_kwargs...)
 scatter!(hm, xpoints, ypoints; marker_kwargs...)
 
-# So what happened here (on purpose) is that the reduced basis does not contain enough
+# So what happened here (on purpose) is that the RB does not contain enough
 # snapshots to fully resolve all features of the true phase diagram. To further dissect
 # the problems, let us look at some of the possible ways to analyze the basis, based on
 # the quantities we already have at our disposal.
 # 
 # ## Online diagnostics
 #
-# To visualize the degree to which the different snapshot vectors are "mixed" in the online
-# reduced basis vectors, we can compute the so-called *participation ratio* 
+# To visualize the degree to which the different snapshot vectors are "mixed" using the online
+# RB coefficients, we can compute the so-called *participation ratio* 
 # 
 # ```math
 # \mathrm{PR}(\phi) = \frac{1}{d} \frac{1}{\sum_{k=1}^d |\phi_k|^4}
 # ```
 #
-# where we assume the transformed RB vector ``\phi = V \varphi`` to be normalized. For a
-# maximally mixing RB vector with elements ``\phi_k = 1/\sqrt{d}`` the participation ratio
-# becomes maximal with ``\mathrm{PR}=1``, whereas a unit vector would produce the minimal
-# participation ratio of ``\mathrm{PR}=1/d``. The RB vectors from before produce the
-# following ``\mathrm{PR}``:
+# where we assume the transformed RB vector ``\phi(\bm{\mu}) = V \varphi(\bm{\mu})`` to be
+# normalized. (Here, ``V`` corresponds to the orthonormalizing matrix that is contained in
+# [`RBasis`](@ref).) For maximally mixing RB coefficients with ``\phi_k = 1/\sqrt{d}`` the
+# participation ratio becomes maximal at ``\mathrm{PR}=1``, whereas a unit vector produces
+# the minimal participation ratio of ``\mathrm{PR}=1/d``. The RB coefficients from before
+# produce the following ``\mathrm{PR}``:
 
 d = dimension(rbres.basis)
-pr = map(rbvecs) do φ
+pr = map(rbcoeff) do φ
     ϕ = rbres.basis.vectors * φ
     1 / (d * sum(x -> abs2(x)^2, ϕ / norm(ϕ)))
 end
@@ -138,11 +139,13 @@ end
 hm = heatmap(xrange, yrange, pr'; title="participation ratio", hm_kwargs...)
 scatter!(hm, xpoints, ypoints; marker_kwargs...)
 
-# Another way to look at the online vectors is to find the maximal coefficient of each
-# vector (again the transformed ``\phi``) on the online grid and then assign it a color.
-# The resulting heatmap displays Voronoi-like cells around the snapshot parameter points.
-# Using the collected info contained in the `collector`,we can even animate these cells
-# with respect to the greedy iterations:
+# Most magnetization plateaus are spanned by merely one snapshot (low ``\mathrm{PR}``),
+# whereas multiple snapshots within one plateau lead to a mixing of RB coefficients.
+# Another way to look at the RB coefficients is to find the maximal coefficient of each
+# ``\phi`` vector on the online grid and then assign it a color. The resulting heatmap
+# displays Voronoi-like cells around the snapshot parameter points. Using the collected
+# info contained in the `collector`, we can even animate these cells with respect to the
+# greedy iterations:
 
 anim = @animate for n in 1:dimension(rbres.basis)
     data = collector.data
@@ -158,8 +161,8 @@ anim = @animate for n in 1:dimension(rbres.basis)
 end
 gif(anim; fps=0.7)
 
-# We see that with each new snapshot we map out a new domain the parameter space. Hence to
-# further resolve the phase diagram, we will need to add more snapshots.
+# We see that with each new snapshot we map out a new domain of the parameter space.
+# Hence to further resolve the phase diagram, we will need to add more snapshots.
 #
 # ## Continuing an assembly
 #
@@ -171,7 +174,7 @@ gif(anim; fps=0.7)
 greedy_cont = Greedy(; estimator=Residual(), n_truth_max=36)
 rbres_cont = assemble(rbres, H, grid_train, greedy_cont, dm, edcomp);
 
-# Apparently the assembly was stopped since an already solved snapshot was about to be
+# Apparently, the assembly was stopped since an already solved snapshot was about to be
 # solved again — which cannot happen in a correctly assembled greedy basis, indicating that
 # the online evaluations of observables will contain artifacts. So let us check that by
 # recomputing the magnetization using the continued basis:
@@ -188,16 +191,17 @@ hm = heatmap(xrange, yrange, magn_cont';
 params = unique(rbres_cont.basis.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params]; marker_kwargs...)
 
-# Indeed the magnetization heatmap seems to be broken (again compare with
+# Indeed, the magnetization heatmap seems to be broken (again compare with
 # [Greedy basis assembly using DMRG](@ref)); the phase diagram contains a large artifact
-# related to the ``M=0`` plateau. In these cases, we need to fix the reduced basis by
-# removing snapshots from it.
+# related to the ``M=0`` plateau. In these cases, we need to fix the RB by removing
+# snapshots from it.
 #
 # ## Truncation of snapshots
 #
-# Fortunately, the greedy assembly is irreversible, meaning we can [`truncate`](@ref) our
-# [`RBasis`](@ref) to a desired number of truth solves. Let us remove the last few snapshots
-# to correct the error incurred by repeated MPS approximations:
+# Fortunately, the greedy assembly is reversible without significant computational effort,
+# meaning we can [`truncate`](@ref) our [`RBasis`](@ref) to a desired number of truth
+# solves. Let us remove the last few snapshots to correct the error incurred by repeated
+# MPS approximations:
 
 basis_trunc = truncate(rbres_cont.basis, 30);
 
@@ -207,8 +211,8 @@ basis_trunc = truncate(rbres_cont.basis, 30);
 h_cache_trunc = truncate(rbres_cont.h_cache, basis_trunc);
 
 # A slightly more subtle thing occurs with the compressed [`AffineDecomposition`](@ref)s.
-# Here we need to provide the second return argument `m_cont_raw` of the compressed magnetization from
-# above:
+# Here we need to provide the second return argument `m_cont_raw` of the compressed magnetization
+# from above, since only the untransformed compressed magnetization can be truncated accordingly:
 
 m_trunc = truncate(m_cont_raw, basis_trunc)
 m_reduced_trunc = m_trunc();
@@ -225,6 +229,6 @@ hm = heatmap(xrange, yrange, magn_trunc';
 params = unique(basis_trunc.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params]; marker_kwargs...)
 
-# By truncating the basis and all compressed quantities, we have recovered the phase
-# diagram. This process did not involve any computationally expensive operations and
-# can therefore be always performed as a consistency check on a generated basis.
+# By truncating the basis and all compressed quantities, we have recovered the correct phase
+# diagram. This process did not involve any computationally expensive operations and can
+# therefore be always performed as a consistency check on a generated basis.
