@@ -100,7 +100,7 @@ function solve(H::AffineDecomposition, μ, Ψ₀::Matrix, lobpcg::LOBPCG)
             maxiter=chunks,
             display_progress=lobpcg.verbose,
         )
-        iterations += res.iterations
+        iterations += res.n_iter
 
         if lobpcg.tol_degeneracy > 0.0
             n_last = findlast(abs.(res.λ .- res.λ[lobpcg.n_target]) .< lobpcg.tol_degeneracy)

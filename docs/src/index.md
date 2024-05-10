@@ -26,4 +26,4 @@ using matrix product states.
 
 [^1]: M. F. Herbst, B. Stamm, S. Wessel, and M. Rizzi, Surrogate models for quantum spin systems based on reduced-order modeling, [Phys. Rev. E **105**, 045303 (2022)](https://link.aps.org/doi/10.1103/PhysRevE.105.045303).
 
-[^2]: P. Brehmer, M. F. Herbst, S. Wessel, M. Rizzi, and B. Stamm, Reduced basis surrogates of quantum spin systems based on tensor networks (2023), [arXiv:2304.13587](https://doi.org/10.48550/arXiv.2304.13587).
+[^2]: P. Brehmer, M. F. Herbst, S. Wessel, M. Rizzi, and B. Stamm, Reduced basis surrogates for quantum spin systems based on tensor networks, [Phys. Rev. E **108**, 025306 (2023)](https://link.aps.org/doi/10.1103/PhysRevE.108.025306).
