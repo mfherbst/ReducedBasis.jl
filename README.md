@@ -22,11 +22,17 @@ For more details [see our documentation](https://mfherbst.github.io/ReducedBasis
 If you find this work useful, please cite:
 ```
 @article{Brehmer2023,
-  author = {Brehmer, Paul and Herbst, Michael F. and Wessel, Stefan and Rizzi, Matteo and Stamm, Benjamin},
   title = {Reduced basis surrogates for quantum spin systems based on tensor networks},
-  url = {http://arxiv.org/abs/2304.13587v2},
-  eprint = {2304.13587v2},
-  month = {Apr},
+  author = {Brehmer, Paul and Herbst, Michael F. and Wessel, Stefan and Rizzi, Matteo and Stamm, Benjamin},
+  journal = {Phys. Rev. E},
+  volume = {108},
+  issue = {2},
+  pages = {025306},
+  numpages = {14},
   year = {2023},
+  month = {Aug},
+  publisher = {American Physical Society},
+  doi = {10.1103/PhysRevE.108.025306},
+  url = {https://link.aps.org/doi/10.1103/PhysRevE.108.025306}
 }
 ```

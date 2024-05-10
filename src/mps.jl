@@ -43,7 +43,6 @@ when constructing [`AffineDecomposition`](@ref) sums explicitly.
     cutoff::Float64 = 1e-9
     maxdim::Int = 1000
     mindim::Int = 1
-    truncate::Bool = true
 end
 
 """
@@ -58,7 +57,6 @@ Construct an `ApproxMPO` with default truncation settings.
 - `cutoff::Float64=1e-9`: relative cutoff for singular values.
 - `maxdim::Int=1000`: maximal bond dimension.
 - `mindim::Int=1`: minimal bond dimension.
-- `truncate::Bool=true`: disables all truncate if set to `false`.
 """
 function ApproxMPO(mpo::MPO, opsum; kwargs...)
     ApproxMPO(; mpo, opsum, kwargs...)
@@ -73,7 +71,7 @@ function Base.:*(o::ApproxMPO, mps::MPS)
     apply(
           # TODO: If the extra args are just collected in a kwarg struct, they can just be
           #       passed through, which is more general and extensible
-        o.mpo, mps; cutoff=o.cutoff, maxdim=o.maxdim, mindim=o.mindim, truncate=o.truncate,
+        o.mpo, mps; cutoff=o.cutoff, maxdim=o.maxdim, mindim=o.mindim,
     )
 end
 
