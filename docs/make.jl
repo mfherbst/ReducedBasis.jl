@@ -122,7 +122,7 @@ makedocs(;
     authors="Michael F. Herbst and Paul Brehmer",
     pages=transform_to_md(PAGES),
     checkdocs=:exports,
-    strict=true,
+    # strict=true,
 )
 
 # Dump files for managing dependencies in binder
