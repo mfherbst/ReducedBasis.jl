@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Analyzing and modifying a reduced basis after assembly · ReducedBasis.jl</title><meta name="title" content="Analyzing and modifying a reduced basis after assembly · ReducedBasis.jl"/><meta property="og:title" content="Analyzing and modifying a reduced basis after assembly · ReducedBasis.jl"/><meta property="twitter:title" content="Analyzing and modifying a reduced basis after assembly · ReducedBasis.jl"/><meta name="description" content="Documentation for ReducedBasis.jl."/><meta property="og:description" content="Documentation for ReducedBasis.jl."/><meta property="twitter:description" content="Documentation for ReducedBasis.jl."/><meta property="og:url" content="https://mfherbst.github.io/ReducedBasis.jl/examples/basis_analysis/"/><meta property="twitter:url" content="https://mfherbst.github.io/ReducedBasis.jl/examples/basis_analysis/"/><link rel="canonical" href="https://mfherbst.github.io/ReducedBasis.jl/examples/basis_analysis/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ReducedBasis.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../xxz_ed/">The reduced basis workflow</a></li><li><a class="tocitem" href="../xxz_dmrg/">Greedy basis assembly using DMRG</a></li><li><a class="tocitem" href="../xxz_pod/">Basis assembly using Proper Orthogonal Decomposition</a></li><li><a class="tocitem" href="../multi_ad/">Affine decompositions with multi-indices and additional parameters</a></li><li class="is-active"><a class="tocitem" href>Analyzing and modifying a reduced basis after assembly</a><ul class="internal"><li><a class="tocitem" href="#Online-diagnostics"><span>Online diagnostics</span></a></li><li><a class="tocitem" href="#Continuing-an-assembly"><span>Continuing an assembly</span></a></li><li><a class="tocitem" href="#Truncation-of-snapshots"><span>Truncation of snapshots</span></a></li></ul></li></ul></li><li><a class="tocitem" href="../../api/">API reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Analyzing and modifying a reduced basis after assembly</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Analyzing and modifying a reduced basis after assembly</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/mfherbst/ReducedBasis.jl/blob/master/examples/basis_analysis.jl#" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Analyzing-and-modifying-a-reduced-basis-after-assembly"><a class="docs-heading-anchor" href="#Analyzing-and-modifying-a-reduced-basis-after-assembly">Analyzing and modifying a reduced basis after assembly</a><a id="Analyzing-and-modifying-a-reduced-basis-after-assembly-1"></a><a class="docs-heading-anchor-permalink" href="#Analyzing-and-modifying-a-reduced-basis-after-assembly" title="Permalink"></a></h1><p><a href="https://mybinder.org/v2/gh/mfherbst/ReducedBasis.jl/gh-pages?filepath=v0.1.4/examples/basis_analysis.ipynb"><img src="https://mybinder.org/badge_logo.svg" alt/></a> <a href="https://nbviewer.jupyter.org/github/mfherbst/ReducedBasis.jl/blob/gh-pages/v0.1.4/examples/basis_analysis.ipynb"><img src="https://img.shields.io/badge/show-nbviewer-579ACA.svg" alt/></a></p><p>When solving parametrized eigenvalue problems using RB surrogates, the important question arises, to what degree the surrogate actually reflects the behavior of the original problem. In particular, one needs to know if the online measurements of observables contain inaccuracies or unphysical artifacts that stem from a inadequate surrogate. One possibility to evaluate the surrogate quality is the direct comparison of observables and vectors obtained from the RB and truth solver. This, however, is a numerically demanding approach which we will not cover here. So in this example we instead want to showcase some of the tools that can be used to analyze and correct an assembled basis in the online stage and in a computationally cheap way.</p><p>Before going into the specifics, we first setup an example for which we use the XXZ chain where the snapshots are obtained using DMRG (see <a href="../xxz_dmrg/#Greedy-basis-assembly-using-DMRG">Greedy basis assembly using DMRG</a>).</p><pre><code class="language-julia hljs">using LinearAlgebra
+using ITensors
+using ReducedBasis
+using Random: seed!
+seed!(0)  # Seed to make example consistent
+
+function xxz_chain(sites::IndexSet; kwargs...)
+    xy_term   = OpSum()
+    zz_term   = OpSum()
+    magn_term = OpSum()
+    for i in 1:(length(sites) - 1)
+        xy_term   += &quot;Sx&quot;, i, &quot;Sx&quot;, i + 1
+        xy_term   += &quot;Sy&quot;, i, &quot;Sy&quot;, i + 1
+        zz_term   += &quot;Sz&quot;, i, &quot;Sz&quot;, i + 1
+        magn_term += &quot;Sz&quot;, i
+    end
+    magn_term += &quot;Sz&quot;, length(sites)  # Add last magnetization term
+    coefficients = μ -&gt; [1.0, μ[1], -μ[2]]
+    AffineDecomposition([ApproxMPO(MPO(xy_term, sites), xy_term; kwargs...),
+                         ApproxMPO(MPO(zz_term, sites), zz_term; kwargs...),
+                         ApproxMPO(MPO(magn_term, sites), magn_term; kwargs...)],
+                        coefficients)
+end
+
+L = 12
+sites = siteinds(&quot;S=1/2&quot;, L)
+H = xxz_chain(sites; cutoff=1e-9)
+dm = DMRG()
+Δ = range(-1.0, 2.5; length=40)
+hJ = range(0.0, 3.5; length=40)
+grid_train = RegularGrid(Δ, hJ);</code></pre><p>Up to this points we chose reasonable parameters for the basis assembly. However, we now intend to generate a bad surrogate with purposefully bad settings.</p><div class="admonition is-warning"><header class="admonition-header">Bad settings</header><div class="admonition-body"><p>The offline settings that are chosen here and also later in the example are intentionally chosen to produce unconverged (and thus wrong) results, i.e., the &quot;side effects&quot; observed in this example should not happen in real applications and would indicate inappropriate parameters.</p></div></div><p>Namely, we limit our basis size to <code>n_truth_max=6</code> truth solves and use a compression cutoff of <code>cutoff=1e-10</code> which is lower than the energy and singular value cutoff above:</p><pre><code class="language-julia hljs">greedy = Greedy(; estimator=Residual(), n_truth_max=8)
+edcomp = EigenDecomposition(; cutoff=0.0);</code></pre><p>We therefore let unphysical modes eventually enter our basis. The first useful object that we encounter is the <a href="../../api/#ReducedBasis.InfoCollector"><code>InfoCollector</code></a> that can be used to collect various quantities that are computed in each greedy iteration. We chain the collector together with the <a href="../../api/#ReducedBasis.print_callback-Tuple{Any}"><code>print_callback</code></a> via the <code>∘</code> operator and use the resulting function as the callback function during assembly:</p><pre><code class="language-julia hljs">collector = InfoCollector(:basis, :h_cache)
+rbres = assemble(H, grid_train, greedy, dm, edcomp;
+                 callback=collector ∘ print_callback);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">n      max. err    ‖BᵀB-I‖     time      μ
+------------------------------------------------------------
+1      NaN         8.88e-16     513ms    [-1.0, 0.0]
+2      6.3         2.29e-16     687ms    [2.5, 3.5]
+3      3.36        3.91e-16     355ms    [2.5, 0.538]
+4      1.52        1.74e-14     564ms    [-0.282, 0.09]
+5      1.87        1.91e-13     226ms    [2.5, 2.513]
+6      0.934       7.49e-15     210ms    [0.795, 0.0]
+7      0.726       6.06e-15     214ms    [0.077, 0.718]
+8      0.868       5.91e-15     198ms    [2.5, 3.141]</code></pre><p>Using this presumably inaccurate surrogate, we compute the magnetization</p><pre><code class="language-julia hljs">M = AffineDecomposition([H.terms[3]], [2 / L])
+m, _ = compress(M, rbres.basis)
+m_reduced = m();</code></pre><p>on a finer online grid using the matching online solver</p><pre><code class="language-julia hljs">Δ_online    = range(first(Δ), last(Δ); length=100)
+hJ_online   = range(first(hJ), last(hJ); length=100)
+grid_online = RegularGrid(Δ_online, hJ_online)
+fulldiag    = FullDiagonalization(dm);</code></pre><p>and additionally save all computed RB coefficients for later analysis:</p><pre><code class="language-julia hljs">using Statistics
+rbcoeff = similar(grid_online, Matrix{ComplexF64})
+magnetization = similar(grid_online, Float64)
+for (idx, μ) in pairs(grid_online)
+    _, φ_rb = solve(rbres.h, rbres.basis.metric, μ, fulldiag)
+    rbcoeff[idx] = φ_rb
+    magnetization[idx] = mean(u -&gt; abs(dot(u, m_reduced, u)), eachcol(φ_rb))
+end</code></pre><p>We then end up with a magnetization heatmap that significantly deviates from the correct phase diagram (compare e.g. with <a href="../xxz_dmrg/#Greedy-basis-assembly-using-DMRG">Greedy basis assembly using DMRG</a>):</p><pre><code class="language-julia hljs">using Plots
+xrange, yrange = grid_online.ranges[1], grid_online.ranges[2]
+params = unique(rbres.basis.parameters)
+xpoints, ypoints = [μ[1] for μ in params], [μ[2] for μ in params]
+hm_kwargs = (; xlabel=raw&quot;$\Delta$&quot;, ylabel=raw&quot;$h/J$&quot;, colorbar=true, leg=false)
+marker_kwargs = (; markershape=:xcross, mcolor=:springgreen, ms=3.0, msw=2.0);
+
+hm = heatmap(xrange, yrange, magnetization&#39;;
+             clims=(0.0, 1.0), title=&quot;magnetization&quot;, hm_kwargs...)
+scatter!(hm, xpoints, ypoints; marker_kwargs...)</code></pre><img src="bc392fcd.svg" alt="Example block output"/><p>So what happened here (on purpose) is that the RB does not contain enough snapshots to fully resolve all features of the true phase diagram. To further dissect the problems, let us look at some of the possible ways to analyze the basis, based on the quantities we already have at our disposal.</p><h2 id="Online-diagnostics"><a class="docs-heading-anchor" href="#Online-diagnostics">Online diagnostics</a><a id="Online-diagnostics-1"></a><a class="docs-heading-anchor-permalink" href="#Online-diagnostics" title="Permalink"></a></h2><p>To visualize the degree to which the different snapshot vectors are &quot;mixed&quot; using the online RB coefficients, we can compute the so-called <em>participation ratio</em></p><p class="math-container">\[\mathrm{PR}(\phi) = \frac{1}{d} \frac{1}{\sum_{k=1}^d |\phi_k|^4}\]</p><p>where we assume the transformed RB vector <span>$\phi(\bm{\mu}) = V \varphi(\bm{\mu})$</span> to be normalized. (Here, <span>$V$</span> corresponds to the orthonormalizing matrix that is contained in <a href="../../api/#ReducedBasis.RBasis"><code>RBasis</code></a>.) For maximally mixing RB coefficients with <span>$\phi_k = 1/\sqrt{d}$</span> the participation ratio becomes maximal at <span>$\mathrm{PR}=1$</span>, whereas a unit vector produces the minimal participation ratio of <span>$\mathrm{PR}=1/d$</span>. The RB coefficients from before produce the following <span>$\mathrm{PR}$</span>:</p><pre><code class="language-julia hljs">d = dimension(rbres.basis)
+pr = map(rbcoeff) do φ
+    ϕ = rbres.basis.vectors * φ
+    1 / (d * sum(x -&gt; abs2(x)^2, ϕ / norm(ϕ)))
+end
+
+hm = heatmap(xrange, yrange, pr&#39;; title=&quot;participation ratio&quot;, hm_kwargs...)
+scatter!(hm, xpoints, ypoints; marker_kwargs...)</code></pre><img src="53832ad2.svg" alt="Example block output"/><p>Most magnetization plateaus are spanned by merely one snapshot (low <span>$\mathrm{PR}$</span>), whereas multiple snapshots within one plateau lead to a mixing of RB coefficients. Another way to look at the RB coefficients is to find the maximal coefficient of each <span>$\phi$</span> vector on the online grid and then assign it a color. The resulting heatmap displays Voronoi-like cells around the snapshot parameter points. Using the collected info contained in the <code>collector</code>, we can even animate these cells with respect to the greedy iterations:</p><pre><code class="language-julia hljs">anim = @animate for n in 1:dimension(rbres.basis)
+    data = collector.data
+    ϕ = map(grid_online) do μ
+        _, φ = solve(data[:h_cache][n].h, data[:basis][n].metric, μ, fulldiag)
+        data[:basis][n].vectors * φ
+    end
+    voronoi = map(φ -&gt; findmax(abs.(@view φ[:, 1]))[2], ϕ)
+    hm = heatmap(xrange, yrange, voronoi&#39;;
+                 title=&quot;Voronoi&quot;, clims=(1, 8), hm_kwargs...)
+    p = unique(data[:basis][n].parameters)
+    scatter!(hm, [μ[1] for μ in p], [μ[2] for μ in p]; marker_kwargs...)
+end
+gif(anim; fps=0.7)</code></pre><img src="11dbbf83.gif" alt="Example block output"/><p>We see that with each new snapshot we map out a new domain of the parameter space. Hence to further resolve the phase diagram, we will need to add more snapshots.</p><h2 id="Continuing-an-assembly"><a class="docs-heading-anchor" href="#Continuing-an-assembly">Continuing an assembly</a><a id="Continuing-an-assembly-1"></a><a class="docs-heading-anchor-permalink" href="#Continuing-an-assembly" title="Permalink"></a></h2><p>To continue assembling a basis, we can just call <a href="../../api/#ReducedBasis.assemble-Tuple{AffineDecomposition, Any, POD, Any}"><code>assemble</code></a> and provide the <code>rbres</code> tuple from the previous greedy assembly. Of course the remaining arguments can be adjusted in the continued assembly, so let us now increase the maximal number of truth solves:</p><pre><code class="language-julia hljs">greedy_cont = Greedy(; estimator=Residual(), n_truth_max=36)
+rbres_cont = assemble(rbres, H, grid_train, greedy_cont, dm, edcomp);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">n      max. err    ‖BᵀB-I‖     time      μ
+------------------------------------------------------------
+9      0.723       6.31e-15     221ms    [0.795, 0.538]
+10     0.814       1.43e-14     276ms    [2.5, 0.897]
+11     0.708       1.12e-14     225ms    [2.051, 2.423]
+12     0.538       5.14e-14     248ms    [0.705, 0.897]
+13     0.443       3.19e-14     316ms    [-0.103, 0.0]
+14     0.274       3.78e-14     302ms    [-0.372, 0.269]
+15     0.233       1.16e-13     781ms    [-0.91, 0.0]
+16     0.229       8.77e-14     290ms    [-0.462, 0.449]
+17     0.113       1.1e-13      333ms    [-0.641, 0.09]
+18     0.103       1.44e-13     978ms    [-0.821, 0.09]
+19     0.079       9.01e-13     419ms    [1.782, 0.359]
+20     0.0748      8.76e-13     416ms    [-0.731, 0.09]
+21     0.041       1.05e-11     437ms    [1.692, 1.256]
+22     0.0393      2.46e-12     484ms    [-0.641, 0.0]
+23     0.0269      3.72e-12     476ms    [0.526, 1.436]
+24     0.0933      7.78e-12     480ms    [2.5, 3.41]
+25     0.0269      2.04e-12     491ms    [0.526, 1.346]
+26     0.022       7.8e-12      554ms    [-0.462, 0.359]
+27     0.013       4.47e-11     564ms    [1.603, 1.256]
+28     0.00821     6.24e-11     529ms    [-0.731, 0.179]
+29     0.00703     7.01e-11     637ms    [0.167, 0.359]
+30     0.00677     2.71e-10     600ms    [1.154, 1.705]
+31     0.00473     2.32e-10     693ms    [-0.821, 0.0]
+32     0.00437     5.37e-09     729ms    [1.692, 0.359]
+<span class="sgr33"><span class="sgr1">┌ Warning: </span></span>μ=[2.5, 3.5] has already been solved
+<span class="sgr33"><span class="sgr1">└ </span></span><span class="sgr90">@ ReducedBasis ~/work/ReducedBasis.jl/ReducedBasis.jl/src/greedy.jl:127</span></code></pre><p>Apparently, the assembly was stopped since an already solved snapshot was about to be solved again — which cannot happen in a correctly assembled greedy basis, indicating that the online evaluations of observables will contain artifacts. So let us check that by recomputing the magnetization using the continued basis:</p><pre><code class="language-julia hljs">m_cont, m_cont_raw = compress(M, rbres_cont.basis)
+m_reduced_cont = m_cont()
+
+magn_cont = map(grid_online) do μ
+    _, φ_rb = solve(rbres_cont.h_cache.h, rbres_cont.basis.metric, μ, fulldiag)
+    mean(u -&gt; abs(dot(u, m_reduced_cont, u)), eachcol(φ_rb))
+end
+hm = heatmap(xrange, yrange, magn_cont&#39;;
+             clims=(0.0, 1.0), title=&quot;continued magnetization&quot;, hm_kwargs...)
+params = unique(rbres_cont.basis.parameters)
+scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params]; marker_kwargs...)</code></pre><img src="2394a7e7.svg" alt="Example block output"/><p>Indeed, the magnetization heatmap seems to be broken (again compare with <a href="../xxz_dmrg/#Greedy-basis-assembly-using-DMRG">Greedy basis assembly using DMRG</a>); the phase diagram contains a large artifact related to the <span>$M=0$</span> plateau. In these cases, we need to fix the RB by removing snapshots from it.</p><h2 id="Truncation-of-snapshots"><a class="docs-heading-anchor" href="#Truncation-of-snapshots">Truncation of snapshots</a><a id="Truncation-of-snapshots-1"></a><a class="docs-heading-anchor-permalink" href="#Truncation-of-snapshots" title="Permalink"></a></h2><p>Fortunately, the greedy assembly is reversible without significant computational effort, meaning we can <a href="../../api/#Base.truncate-Tuple{AffineDecomposition, RBasis}"><code>truncate</code></a> our <a href="../../api/#ReducedBasis.RBasis"><code>RBasis</code></a> to a desired number of truth solves. Let us remove the last few snapshots to correct the error incurred by repeated MPS approximations:</p><pre><code class="language-julia hljs">basis_trunc = truncate(rbres_cont.basis, 30);</code></pre><p>Since we performed multiple compressions using the previous <code>rbres_cont.basis</code>, we also need to truncate the <a href="../../api/#ReducedBasis.HamiltonianCache"><code>HamiltonianCache</code></a> according to the truncated basis:</p><pre><code class="language-julia hljs">h_cache_trunc = truncate(rbres_cont.h_cache, basis_trunc);</code></pre><p>A slightly more subtle thing occurs with the compressed <a href="../../api/#ReducedBasis.AffineDecomposition"><code>AffineDecomposition</code></a>s. Here we need to provide the second return argument <code>m_cont_raw</code> of the compressed magnetization from above, since only the untransformed compressed magnetization can be truncated accordingly:</p><pre><code class="language-julia hljs">m_trunc = truncate(m_cont_raw, basis_trunc)
+m_reduced_trunc = m_trunc();</code></pre><p>Finally, let us recompute the magnetization but this time with the truncated quantities and check the heatmap plot:</p><pre><code class="language-julia hljs">magn_trunc = map(grid_online) do μ
+    _, φ_rb = solve(h_cache_trunc.h, basis_trunc.metric, μ, fulldiag)
+    mean(u -&gt; abs(dot(u, m_reduced_trunc, u)), eachcol(φ_rb))
+end
+hm = heatmap(xrange, yrange, magn_trunc&#39;;
+             clims=(0.0, 1.0), title=&quot;truncated magnetization&quot;, hm_kwargs...)
+params = unique(basis_trunc.parameters)
+scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params]; marker_kwargs...)</code></pre><img src="7d6817c6.svg" alt="Example block output"/><p>By truncating the basis and all compressed quantities, we have recovered the correct phase diagram. This process did not involve any computationally expensive operations and can therefore be always performed as a consistency check on a generated basis.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../multi_ad/">« Affine decompositions with multi-indices and additional parameters</a><a class="docs-footer-nextpage" href="../../api/">API reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Friday 24 May 2024 09:15">Friday 24 May 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
