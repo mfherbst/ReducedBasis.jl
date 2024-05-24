@@ -41,19 +41,19 @@ lobpcg = LOBPCG(; tol_degeneracy=1e-4)
 qrcomp = QRCompress(; tol=1e-9)
 rbres = assemble(H, grid_train, greedy, lobpcg, qrcomp);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">n      max. err    ‖BᵀB-I‖     time      μ
 ------------------------------------------------------------
-1      NaN         5.68e-15     217ms    [-1.0, 0.0]
-2      2.33        5.7e-15      233ms    [2.231, 0.538]
-3      0.946       5.8e-15     85.1ms    [0.795, 0.897]
-4      0.508       5.91e-15    72.7ms    [1.154, 1.795]
-5      0.472       6.21e-15    81.1ms    [2.5, 1.077]
-6      0.385       6.51e-15    81.2ms    [0.346, 0.179]
-7      0.0727      1.23e-14    78.8ms    [-0.551, 0.0]
-8      0.0554      1.93e-14    86.5ms    [-0.462, 0.269]
-9      0.0163      9.5e-14     99.3ms    [1.423, 0.538]
-10     0.00522     1.61e-13     110ms    [-0.372, 0.449]
-11     0.004       3.05e-13     123ms    [1.692, 1.346]
-12     0.00151     4.61e-13     138ms    [-0.821, 0.0]
-13     0.00039     1.08e-12     155ms    [-0.821, 0.09]
+1      NaN         5.68e-15     197ms    [-1.0, 0.0]
+2      2.33        5.7e-15      224ms    [2.231, 0.538]
+3      0.946       5.8e-15     75.3ms    [0.795, 0.897]
+4      0.508       5.91e-15    87.4ms    [1.154, 1.795]
+5      0.472       6.21e-15    64.6ms    [2.5, 1.077]
+6      0.385       6.51e-15    92.1ms    [0.346, 0.179]
+7      0.0727      1.23e-14    79.5ms    [-0.551, 0.0]
+8      0.0554      1.93e-14    83.7ms    [-0.462, 0.269]
+9      0.0163      9.5e-14     95.4ms    [1.423, 0.538]
+10     0.00522     1.61e-13     102ms    [-0.372, 0.449]
+11     0.004       3.05e-13     120ms    [1.692, 1.346]
+12     0.00151     4.61e-13     133ms    [-0.821, 0.0]
+13     0.00039     1.08e-12     147ms    [-0.821, 0.09]
 reached residual target</code></pre><p>Now the task is to implement the double-sum in <span>$\mathcal{S}$</span>, as well as the <span>$k$</span>-dependency in the coefficients. The double-sum can be encoded by putting all <span>$S^z_r S^z_{r&#39;}$</span> combinations into an <span>$L \times L$</span> matrix:</p><pre><code class="language-julia hljs">terms = map(idx -&gt; to_global(σz, L, idx[1]) * to_global(σz, L, idx[2]),
             Iterators.product(1:L, 1:L));</code></pre><p>Correspondingly, the coefficient function now has to map one <span>$k$</span> value to a matrix of coefficients of the same size as the <code>terms</code> matrix:</p><pre><code class="language-julia hljs">coefficients = k -&gt; map(idx -&gt; cis(-(idx[1] - idx[2]) * k) / L,
                         Iterators.product(1:L, 1:L));</code></pre><p>One feature of the structure factor that also shows up in many other affine decompositions with double-sums is that the term indices commute, i.e. <span>$O_{r,r&#39;} = O_{r&#39;,r}$</span>. In that case, only the upper triangular matrix has to be computed since <span>$B^\dagger O_{r,r&#39;} B = B^\dagger O_{r&#39;,r} B$</span> are the same in the compressed affine decomposition. So let&#39;s create the <a href="../../api/#ReducedBasis.AffineDecomposition"><code>AffineDecomposition</code></a> and compress, exploiting this symmetry using the <code>symmetric_terms</code> keyword argument:</p><pre><code class="language-julia hljs">SFspin    = AffineDecomposition(terms, coefficients)
@@ -75,4 +75,4 @@ for (i, q) in enumerate(wavevectors)
     push!(hms, heatmap(grid_online.ranges[1], grid_online.ranges[2], sf[i]&#39;;
                        title=&quot;\$k = $(round(q/π; digits=3))\\pi\$&quot;, kwargs...))
 end
-plot(hms...)</code></pre><img src="eef9cae0.svg" alt="Example block output"/><p>It can be nicely seen that the spin structure factor indicates the ferromagnetic phase at <span>$k=0$</span> and then moves through the magnetization plateaus until it reaches the antiferromagnetic plateau at <span>$k=\pi$</span>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../xxz_pod/">« Basis assembly using Proper Orthogonal Decomposition</a><a class="docs-footer-nextpage" href="../basis_analysis/">Analyzing and modifying a reduced basis after assembly »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Friday 24 May 2024 09:00">Friday 24 May 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+plot(hms...)</code></pre><img src="ab5ec462.svg" alt="Example block output"/><p>It can be nicely seen that the spin structure factor indicates the ferromagnetic phase at <span>$k=0$</span> and then moves through the magnetization plateaus until it reaches the antiferromagnetic plateau at <span>$k=\pi$</span>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../xxz_pod/">« Basis assembly using Proper Orthogonal Decomposition</a><a class="docs-footer-nextpage" href="../basis_analysis/">Analyzing and modifying a reduced basis after assembly »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.4.1 on <span class="colophon-date" title="Friday 24 May 2024 09:21">Friday 24 May 2024</span>. Using Julia version 1.10.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
