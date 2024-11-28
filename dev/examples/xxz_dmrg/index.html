@@ -27,30 +27,30 @@ greedy = Greedy(; estimator=Residual(), n_truth_max=24)
 
 rbres = assemble(H, grid_train, greedy, dm, edcomp);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">n      max. err    ‖BᵀB-I‖     time      μ
 ------------------------------------------------------------
-1      NaN         1.33e-15     498ms    [-1.0, 0.0]
-2      6.91        2.22e-16     600ms    [2.5, 3.5]
-3      3.53        3.75e-16     227ms    [2.5, 0.449]
-4      1.52        6.28e-14     427ms    [-0.282, 0.09]
-5      1.87        1.21e-14     195ms    [2.5, 2.333]
-6      0.934       5.02e-15     201ms    [0.795, 0.0]
-7      0.726       9.44e-15     230ms    [0.077, 0.718]
-8      0.868       1.06e-14     211ms    [2.5, 3.141]
-9      0.723       1.65e-14     213ms    [0.795, 0.538]
-10     0.814       1.77e-14     235ms    [2.5, 0.897]
-11     0.708       3.8e-14      214ms    [2.051, 2.423]
-12     0.538       2.9e-14      229ms    [0.705, 0.897]
-13     0.443       3.5e-14      329ms    [-0.103, 0.0]
-14     0.274       3.25e-14     319ms    [-0.372, 0.269]
-15     0.235       6.77e-14     852ms    [-0.91, 0.0]
-16     0.229       1.01e-13     329ms    [-0.462, 0.449]
-17     0.113       2.09e-13     353ms    [-0.641, 0.09]
-18     0.103       1.23e-13     979ms    [-0.821, 0.09]
-19     0.079       9.63e-13     430ms    [1.782, 0.359]
-20     0.0748      7.12e-13     447ms    [-0.731, 0.09]
-21     0.041       3.53e-12     455ms    [1.692, 1.256]
-22     0.0393      6.6e-12      506ms    [-0.641, 0.0]
-23     0.0269      6.62e-12     572ms    [0.526, 1.436]
-24     0.0933      6.22e-12     517ms    [2.5, 3.41]</code></pre><p>The returned <code>basis</code> now has snapshot vectors of <code>ITensorMPS.MPS</code> type, which we have to keep in mind when we want to compress observables. That is to say, the observables have to be constructed as <a href="../../api/#ReducedBasis.AffineDecomposition"><code>AffineDecomposition</code></a>s with <a href="../../api/#ReducedBasis.ApproxMPO"><code>ApproxMPO</code></a> terms as we did for the Hamiltonian. Again, we want to compute the magnetization so that we can reuse the third term of <code>H</code>:</p><pre><code class="language-julia hljs">M    = AffineDecomposition([H.terms[3]], [2 / L])
+1      NaN         1.33e-15     527ms    [-1.0, 0.0]
+2      6.91        2.22e-16     593ms    [2.5, 3.5]
+3      3.53        3.75e-16     228ms    [2.5, 0.449]
+4      1.52        6.28e-14     415ms    [-0.282, 0.09]
+5      1.87        1.21e-14     178ms    [2.5, 2.333]
+6      0.934       5.02e-15     194ms    [0.795, 0.0]
+7      0.726       9.44e-15     210ms    [0.077, 0.718]
+8      0.868       1.06e-14     209ms    [2.5, 3.141]
+9      0.723       1.65e-14     198ms    [0.795, 0.538]
+10     0.814       1.77e-14     228ms    [2.5, 0.897]
+11     0.708       3.8e-14      203ms    [2.051, 2.423]
+12     0.538       2.9e-14      223ms    [0.705, 0.897]
+13     0.443       3.5e-14      315ms    [-0.103, 0.0]
+14     0.274       3.25e-14     310ms    [-0.372, 0.269]
+15     0.235       6.77e-14     821ms    [-0.91, 0.0]
+16     0.229       1.01e-13     305ms    [-0.462, 0.449]
+17     0.113       2.09e-13     340ms    [-0.641, 0.09]
+18     0.103       1.23e-13     964ms    [-0.821, 0.09]
+19     0.079       9.63e-13     421ms    [1.782, 0.359]
+20     0.0748      7.12e-13     422ms    [-0.731, 0.09]
+21     0.041       3.53e-12     456ms    [1.692, 1.256]
+22     0.0393      6.6e-12      484ms    [-0.641, 0.0]
+23     0.0269      6.62e-12     581ms    [0.526, 1.436]
+24     0.0933      6.22e-12     496ms    [2.5, 3.41]</code></pre><p>The returned <code>basis</code> now has snapshot vectors of <code>ITensorMPS.MPS</code> type, which we have to keep in mind when we want to compress observables. That is to say, the observables have to be constructed as <a href="../../api/#ReducedBasis.AffineDecomposition"><code>AffineDecomposition</code></a>s with <a href="../../api/#ReducedBasis.ApproxMPO"><code>ApproxMPO</code></a> terms as we did for the Hamiltonian. Again, we want to compute the magnetization so that we can reuse the third term of <code>H</code>:</p><pre><code class="language-julia hljs">M    = AffineDecomposition([H.terms[3]], [2 / L])
 m, _ = compress(M, rbres.basis);</code></pre><p>And at that point, we continue as before since we have arrived at the online phase where we only operate in the low-dimensional RB space, agnostic of the snapshot solver method. We have to make sure, however, to choose matching degeneracy settings for the <a href="../../api/#ReducedBasis.FullDiagonalization"><code>FullDiagonalization</code></a> solver in the online phase:</p><pre><code class="language-julia hljs">fulldiag = FullDiagonalization(dm);</code></pre><p>Then we can define an online grid and compute the magnetization at all grid points, again constructing <code>m</code> at an arbitrary parameter point since its coefficient is parameter-independent:</p><pre><code class="language-julia hljs">m_reduced = m()
 Δ_online = range(first(Δ), last(Δ); length=100)
 hJ_online = range(first(hJ), last(hJ); length=100)
@@ -66,4 +66,4 @@ hm = heatmap(grid_online.ranges[1], grid_online.ranges[2], magnetization&#39;;
              colorbar=true, clims=(0.0, 1.0), leg=false)
 params = unique(rbres.basis.parameters)
 scatter!(hm, [μ[1] for μ in params], [μ[2] for μ in params];
-         markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)</code></pre><img src="2815d6d4.svg" alt="Example block output"/><p>We reproduce the ground-state phase diagram, but this time with more magnetization plateaus (due to increased system size) and we see that the greedy algorithm chose different parameter points to solve using DMRG.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../xxz_ed/">« The reduced basis workflow</a><a class="docs-footer-nextpage" href="../xxz_pod/">Basis assembly using Proper Orthogonal Decomposition »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Thursday 28 November 2024 16:57">Thursday 28 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+         markershape=:xcross, color=:springgreen, ms=3.0, msw=2.0)</code></pre><img src="47245aa4.svg" alt="Example block output"/><p>We reproduce the ground-state phase diagram, but this time with more magnetization plateaus (due to increased system size) and we see that the greedy algorithm chose different parameter points to solve using DMRG.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../xxz_ed/">« The reduced basis workflow</a><a class="docs-footer-nextpage" href="../xxz_pod/">Basis assembly using Proper Orthogonal Decomposition »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Thursday 28 November 2024 17:33">Thursday 28 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
