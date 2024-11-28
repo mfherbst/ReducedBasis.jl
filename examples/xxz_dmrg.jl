@@ -19,7 +19,7 @@
 #     `ITensors` and in particular random initial states consistent and deterministic,
 #     we initialize the random number generator by calling `Random.seed!`.
 
-using ITensors
+using ITensors, ITensorMPS
 using ReducedBasis
 using Random: seed!
 seed!(0);
@@ -96,7 +96,7 @@ greedy = Greedy(; estimator=Residual(), n_truth_max=24)
 
 rbres = assemble(H, grid_train, greedy, dm, edcomp);
 
-# The returned `basis` now has snapshot vectors of `ITensors.MPS` type, which we have to
+# The returned `basis` now has snapshot vectors of `ITensorMPS.MPS` type, which we have to
 # keep in mind when we want to compress observables. That is to say, the observables have
 # to be constructed as [`AffineDecomposition`](@ref)s with [`ApproxMPO`](@ref) terms as
 # we did for the Hamiltonian. Again, we want to compute the magnetization so that we can

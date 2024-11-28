@@ -15,7 +15,7 @@
 # [Greedy basis assembly using DMRG](@ref)).
 
 using LinearAlgebra
-using ITensors
+using ITensors, ITensorMPS
 using ReducedBasis
 using Random: seed!
 seed!(0)  # Seed to make example consistent

@@ -1,4 +1,4 @@
-using Test, LinearAlgebra, ITensors, SparseArrays
+using Test, LinearAlgebra, ITensors, ITensorMPS, SparseArrays
 using ReducedBasis
 using ReducedBasis: reconstruct
 

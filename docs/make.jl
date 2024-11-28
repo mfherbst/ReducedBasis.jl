@@ -40,6 +40,14 @@ ROOTPATH  = joinpath(@__DIR__, "..")
 CONTINUOUS_INTEGRATION = get(ENV, "CI", nothing) == "true"
 BRANCH = try LibGit2.branch(LibGit2.GitRepo(ROOTPATH)) catch end
 
+# Setup julia dependencies for docs generation if not yet done
+using Pkg
+Pkg.activate(@__DIR__)
+if !isfile(joinpath(@__DIR__, "Manifest.toml"))
+    Pkg.develop(Pkg.PackageSpec(; path=ROOTPATH))
+    Pkg.instantiate()
+end
+
 push!(LOAD_PATH, "../src/")
 import LibGit2
 using ReducedBasis
