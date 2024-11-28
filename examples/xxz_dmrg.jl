@@ -19,7 +19,7 @@
 #     `ITensors` and in particular random initial states consistent and deterministic,
 #     we initialize the random number generator by calling `Random.seed!`.
 
-using ITensors
+using ITensors, ITensorMPS
 using ReducedBasis
 using Random: seed!
 seed!(0);
