@@ -27,7 +27,7 @@ SparseArrays = "1"
 StaticArrays = "1"
 SuiteSparse = "1"
 Test = "1"
-TimerOutputs = "0.5"
+TimerOutputs = "0.5.12"
 julia = "1.10"
 
 [extras]
