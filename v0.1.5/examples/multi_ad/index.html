@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Affine decompositions with multi-indices and additional parameters · ReducedBasis.jl</title><meta name="title" content="Affine decompositions with multi-indices and additional parameters · ReducedBasis.jl"/><meta property="og:title" content="Affine decompositions with multi-indices and additional parameters · ReducedBasis.jl"/><meta property="twitter:title" content="Affine decompositions with multi-indices and additional parameters · ReducedBasis.jl"/><meta name="description" content="Documentation for ReducedBasis.jl."/><meta property="og:description" content="Documentation for ReducedBasis.jl."/><meta property="twitter:description" content="Documentation for ReducedBasis.jl."/><meta property="og:url" content="https://mfherbst.github.io/ReducedBasis.jl/examples/multi_ad/"/><meta property="twitter:url" content="https://mfherbst.github.io/ReducedBasis.jl/examples/multi_ad/"/><link rel="canonical" href="https://mfherbst.github.io/ReducedBasis.jl/examples/multi_ad/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ReducedBasis.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../xxz_ed/">The reduced basis workflow</a></li><li><a class="tocitem" href="../xxz_dmrg/">Greedy basis assembly using DMRG</a></li><li><a class="tocitem" href="../xxz_pod/">Basis assembly using Proper Orthogonal Decomposition</a></li><li class="is-active"><a class="tocitem" href>Affine decompositions with multi-indices and additional parameters</a></li><li><a class="tocitem" href="../basis_analysis/">Analyzing and modifying a reduced basis after assembly</a></li></ul></li><li><a class="tocitem" href="../../api/">API reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Affine decompositions with multi-indices and additional parameters</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Affine decompositions with multi-indices and additional parameters</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/mfherbst/ReducedBasis.jl/blob/master/examples/multi_ad.jl#" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Affine-decompositions-with-multi-indices-and-additional-parameters"><a class="docs-heading-anchor" href="#Affine-decompositions-with-multi-indices-and-additional-parameters">Affine decompositions with multi-indices and additional parameters</a><a id="Affine-decompositions-with-multi-indices-and-additional-parameters-1"></a><a class="docs-heading-anchor-permalink" href="#Affine-decompositions-with-multi-indices-and-additional-parameters" title="Permalink"></a></h1><p><a href="https://mybinder.org/v2/gh/mfherbst/ReducedBasis.jl/gh-pages?filepath=v0.1.5/examples/multi_ad.ipynb"><img src="https://mybinder.org/badge_logo.svg" alt/></a> <a href="https://nbviewer.jupyter.org/github/mfherbst/ReducedBasis.jl/blob/gh-pages/v0.1.5/examples/multi_ad.ipynb"><img src="https://img.shields.io/badge/show-nbviewer-579ACA.svg" alt/></a></p><p>In this example, we want to explore the capabilities of the central <a href="../../api/#ReducedBasis.AffineDecomposition"><code>AffineDecomposition</code></a> type. To advance the previous examples where we covered the magnetization — a very simple observable that consists of only one affine term and a parameter-independent coefficient — we now turn to observables where the indices are multi-indices <span>$r = (r_1, \dots, r_d)$</span> and the coefficients can depend on additional parameters <span>$p$</span>, aside from the <span>$\bm{\mu}$</span> parameter points that are present in the Hamiltonian:</p><p class="math-container">\[O(\bm{\mu}, p) = \sum_{q=1}^Q \alpha_q(\bm{\mu}, p)\, O_q\]</p><p>To stay within the realm of quantum magnetism, we will consider the so-called <em>spin structure factor</em></p><p class="math-container">\[\mathcal{S}(k) = \frac{1}{L} \sum_{r,r&#39;=1}^L e^{-i (r - r&#39;) k} S^z_r S^z_{r&#39;},\quad
+\alpha_{r,r&#39;}(k) = \frac{e^{-i (r - r&#39;) k}}{L}, \quad
+O_{r,r&#39;} =  S^z_r S^z_{r&#39;}\]</p><p>with a wave vector parameter <span>$k$</span>, to discuss the implementation of a more complicated observable.</p><p>To provide a physical setup, we again use the XXZ chain from <a href="../xxz_ed/#The-reduced-basis-workflow">The reduced basis workflow</a>:</p><pre><code class="language-julia hljs">using LinearAlgebra
+using SparseArrays
+using ReducedBasis
+
+σx = sparse([0.0 1.0; 1.0 0.0])
+σy = sparse([0.0 -im; im 0.0])
+σz = sparse([1.0 0.0; 0.0 -1.0])
+
+function to_global(op::M, L::Int, i::Int) where {M&lt;:AbstractMatrix}
+    d = size(op, 1)
+    if i == 1
+        kron(op, M(I, d^(L - 1), d^(L - 1)))
+    elseif i == L
+        kron(M(I, d^(L - 1), d^(L - 1)), op)
+    else
+        kron(kron(M(I, d^(i - 1), d^(i - 1)), op), M(I, d^(L - i), d^(L - i)))
+    end
+end
+
+function xxz_chain(L)
+    H1 = 0.25 * sum(1:L-1) do i
+        to_global(σx, L, i) * to_global(σx, L, i + 1) +
+        to_global(σy, L, i) * to_global(σy, L, i + 1)
+    end
+    H2 = 0.25 * sum(1:L-1) do i
+        to_global(σz, L, i) * to_global(σz, L, i + 1)
+    end
+    H3 = 0.5  * sum(1:L) do i
+        to_global(σz, L, i)
+    end
+    AffineDecomposition([H1, H2, H3], μ -&gt; [1.0, μ[1], -μ[2]])
+end;</code></pre><p>Construct the Hamiltonian for an XXZ chain with 6 sites ...</p><pre><code class="language-julia hljs">L = 6
+H = xxz_chain(L);</code></pre><p>... and generate a RB surrogate using an exact diagonalization solver.</p><pre><code class="language-julia hljs">Δ  = range(-1.0, 2.5; length=40)
+hJ = range( 0.0, 3.5; length=40)
+grid_train = RegularGrid(Δ, hJ)
+greedy = Greedy(; estimator=Residual())
+lobpcg = LOBPCG(; tol_degeneracy=1e-4)
+qrcomp = QRCompress(; tol=1e-9)
+rbres = assemble(H, grid_train, greedy, lobpcg, qrcomp);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">n      max. err    ‖BᵀB-I‖     time      μ
+------------------------------------------------------------
+1      NaN         4.74e-15     224ms    [-1.0, 0.0]
+2      2.33        4.76e-15     269ms    [2.231, 0.538]
+3      0.946       4.83e-15    83.8ms    [0.795, 0.897]
+4      0.508       4.94e-15    94.1ms    [1.154, 1.795]
+5      0.472       5.96e-15     104ms    [2.5, 2.603]
+6      0.385       6.5e-15     91.8ms    [0.346, 0.0]
+7      0.0727      1.12e-14     103ms    [-0.551, 0.0]
+8      0.0554      1.58e-14     107ms    [-0.462, 0.269]
+9      0.0163      7.3e-14      121ms    [1.423, 0.359]
+10     0.00522     1.12e-13     127ms    [-0.372, 0.449]
+11     0.004       3.48e-13     152ms    [1.692, 1.436]
+12     0.00151     6.09e-13     159ms    [-0.821, 0.0]
+13     0.00039     1.01e-12     176ms    [-0.821, 0.09]
+reached residual target</code></pre><p>Now the task is to implement the double-sum in <span>$\mathcal{S}$</span>, as well as the <span>$k$</span>-dependency in the coefficients. The double-sum can be encoded by putting all <span>$S^z_r S^z_{r&#39;}$</span> combinations into an <span>$L \times L$</span> matrix:</p><pre><code class="language-julia hljs">terms = map(idx -&gt; to_global(σz, L, idx[1]) * to_global(σz, L, idx[2]),
+            Iterators.product(1:L, 1:L));</code></pre><p>Correspondingly, the coefficient function now has to map one <span>$k$</span> value to a matrix of coefficients of the same size as the <code>terms</code> matrix:</p><pre><code class="language-julia hljs">coefficients = k -&gt; map(idx -&gt; cis(-(idx[1] - idx[2]) * k) / L,
+                        Iterators.product(1:L, 1:L));</code></pre><p>One feature of the structure factor that also shows up in many other affine decompositions with double-sums is that the term indices commute, i.e. <span>$O_{r,r&#39;} = O_{r&#39;,r}$</span>. In that case, only the upper triangular matrix has to be computed since <span>$B^\dagger O_{r,r&#39;} B = B^\dagger O_{r&#39;,r} B$</span> are the same in the compressed affine decomposition. So let&#39;s create the <a href="../../api/#ReducedBasis.AffineDecomposition"><code>AffineDecomposition</code></a> and compress, exploiting this symmetry using the <code>symmetric_terms</code> keyword argument:</p><pre><code class="language-julia hljs">SFspin    = AffineDecomposition(terms, coefficients)
+sfspin, _ = compress(SFspin, rbres.basis; symmetric_terms=true);</code></pre><p>In the online evaluation of the structure factor, we then need to define some wave vector values and compute the structure factor at each of them. As usual, we first define a finer online grid of points and the matching online solver:</p><pre><code class="language-julia hljs">Δ_online    = range(first(Δ), last(Δ); length=100)
+hJ_online   = range(first(hJ), last(hJ); length=100)
+grid_online = RegularGrid(Δ_online, hJ_online)
+fulldiag    = FullDiagonalization(lobpcg);</code></pre><p>And then we map the grid points to the corresponding structure factor values for a set of different wave vectors:</p><pre><code class="language-julia hljs">using Statistics
+wavevectors = [0.0, π/4, π/2, π]
+sf = [zeros(size(grid_online)) for _ in 1:length(wavevectors)]
+for (idx, μ) in pairs(grid_online)
+    _, φ_rb = solve(rbres.h, rbres.basis.metric, μ, fulldiag)
+    for (i, k) in enumerate(wavevectors)
+        sf[i][idx] = mean(u -&gt; real(dot(u, sfspin(k), u)), eachcol(φ_rb))
+    end
+end</code></pre><p>Here we again see the convenience of measuring observables in the online stage; adding more wavevector values does not significantly increase the computational cost, since it corresponds to a mere reevaluation of the coefficient functions and small vector-matrix products. Finally, let us see how the structure factor behaves for the different wave vector values:</p><pre><code class="language-julia hljs">using Plots
+kwargs = (; xlabel=raw&quot;$\Delta$&quot;, ylabel=raw&quot;$h/J$&quot;, colorbar=true, leg=false)
+hms = []
+for (i, q) in enumerate(wavevectors)
+    push!(hms, heatmap(grid_online.ranges[1], grid_online.ranges[2], sf[i]&#39;;
+                       title=&quot;\$k = $(round(q/π; digits=3))\\pi\$&quot;, kwargs...))
+end
+plot(hms...)</code></pre><img src="111b805d.svg" alt="Example block output"/><p>It can be nicely seen that the spin structure factor indicates the ferromagnetic phase at <span>$k=0$</span> and then moves through the magnetization plateaus until it reaches the antiferromagnetic plateau at <span>$k=\pi$</span>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../xxz_pod/">« Basis assembly using Proper Orthogonal Decomposition</a><a class="docs-footer-nextpage" href="../basis_analysis/">Analyzing and modifying a reduced basis after assembly »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Thursday 28 November 2024 18:15">Thursday 28 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
